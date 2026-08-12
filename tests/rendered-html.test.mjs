@@ -34,6 +34,9 @@ test("server-renders the operational catalog", async () => {
   assert.match(html, /<title>DevHub — The operational home for everything you build<\/title>/i);
   assert.match(html, /favicon\.svg/i);
   assert.match(html, /Git remembers the code/);
+  assert.match(html, /where it runs, how it is monitored, what safety and cost evidence exists, and how to recover it/i);
+  assert.match(html, /Portfolio guardian/i);
+  assert.match(html, /no magic score/i);
   assert.match(html, /Everything you build stays findable/);
   for (const project of catalog.projects.slice(0, 3)) assert.match(html, new RegExp(project.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(html, /Viewing from/);

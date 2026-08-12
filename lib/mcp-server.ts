@@ -49,9 +49,60 @@ const readinessEvidenceSchema = z.object({
   url: z.string().url().regex(/^https?:\/\//).optional(),
 });
 
+const passportDependencySchema = z.object({
+  id,
+  kind: z.enum(["data-store", "external-api", "auth", "payment", "messaging", "storage", "ai-model", "other"]),
+  name: z.string(),
+  criticality: z.enum(["required", "degraded", "optional"]),
+  provider: z.string().optional(),
+  url: z.string().url().regex(/^https?:\/\//).optional(),
+  note: z.string().optional(),
+});
+
 const readinessSchema = z.object({
   profile: z.enum(["personal", "internal", "customer-facing", "sensitive"]),
+  owner: z.string().optional(),
+  dataClassification: z.enum(["none", "internal", "personal", "sensitive", "regulated", "unknown"]).optional(),
+  costModel: z.enum(["free", "fixed", "metered", "unknown"]).optional(),
+  deployment: z.object({
+    source: z.enum(["operator", "agent", "integration", "catalog"]),
+    provider: z.string().optional(),
+    revision: z.string().optional(),
+    deployedAt: z.string().optional(),
+    url: z.string().url().regex(/^https?:\/\//).optional(),
+  }).optional(),
+  dependencies: z.array(passportDependencySchema).optional(),
   evidence: z.array(readinessEvidenceSchema),
+});
+
+const readinessAssessmentItemSchema = z.object({
+  check: z.enum(["monitoring", "alerting", "backup", "restore", "rollback", "security-review", "privacy", "ownership", "cost", "deployment"]),
+  expected: z.boolean(),
+  state: z.enum(["verified", "declared", "missing", "stale", "not-applicable", "unknown"]),
+  evidence: readinessEvidenceSchema.nullable(),
+  provenance: z.object({
+    source: z.enum(["operator", "agent", "integration", "catalog"]),
+    observedAt: z.string().optional(),
+    validUntil: z.string().optional(),
+    url: z.string().url().regex(/^https?:\/\//).optional(),
+  }).nullable(),
+  actionable: z.boolean(),
+  action: z.string().nullable(),
+});
+
+const readinessAssessmentSchema = z.object({
+  profile: z.enum(["personal", "internal", "customer-facing", "sensitive"]).nullable(),
+  evaluatedAt: z.string(),
+  checks: z.array(readinessAssessmentItemSchema),
+  gaps: z.array(readinessAssessmentItemSchema.extend({ actionable: z.literal(true), action: z.string() })),
+  counts: z.object({
+    verified: z.number(),
+    declared: z.number(),
+    missing: z.number(),
+    stale: z.number(),
+    "not-applicable": z.number(),
+    unknown: z.number(),
+  }),
 });
 
 const serviceSummarySchema = z.object({
@@ -67,6 +118,7 @@ const serviceSummarySchema = z.object({
   endpoint: serviceEndpointSchema.nullable(),
   selectedEndpoint: selectedEndpointSchema.nullable(),
   readiness: readinessSchema.nullable(),
+  readinessAssessment: readinessAssessmentSchema,
   links: z.array(serviceLinkSchema),
   hasProbe: z.boolean(),
   hasRunbook: z.boolean(),

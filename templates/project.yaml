@@ -37,6 +37,13 @@ services:
       timeoutMs: 5000
     readiness:
       profile: personal
+      owner: Change me
+      dataClassification: unknown
+      costModel: unknown
+      deployment:
+        source: catalog
+        provider: Change me
+      dependencies: []
       evidence:
         - id: monitoring-status
           check: monitoring

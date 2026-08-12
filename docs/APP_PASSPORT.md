@@ -64,6 +64,34 @@ A `verified` item whose `validUntil` is in the past is displayed as stale. A
 declaration is useful context but is never presented as verification. Unknown
 is an honest first-class result.
 
+## Operating facts
+
+The passport may also carry a small non-secret operating inventory:
+
+- a human owner or accountable role;
+- data classification: `none`, `internal`, `personal`, `sensitive`,
+  `regulated` or `unknown`;
+- a cost model: `free`, `fixed`, `metered` or `unknown`;
+- deployment provider, reviewed revision, deployment time and evidence link;
+- required, degraded-mode and optional dependencies such as data stores,
+  authentication, payments, messaging, storage, AI models and external APIs.
+
+These are reviewed facts, not credentials or provider configuration. A
+dependency URL points to safe documentation, status or console context and
+must never contain tokens or connection strings.
+
+## Profile expectations
+
+Profiles select explicit expected checks. They do not produce a percentage or
+certification. Personal services focus on recovery, ownership, cost and
+deployment. Internal services add monitoring. Customer-facing and sensitive
+services expect the full first set of checks. An expected check with no
+evidence is `unknown`; only reviewed evidence may call it `missing`, `verified`
+or `not-applicable`.
+
+The policy is versioned in `config/readiness-policy.json` so the dashboard,
+MCP, CLI and portfolio review share one interpretation.
+
 ## User experience
 
 The service detail panel shows a compact passport only after a service is
@@ -77,6 +105,10 @@ The passport leads with the operating profile and a plain summary such as:
 
 Every item exposes its state, provenance, freshness and note. There is no
 percentage score, green shield or "production ready" certification.
+
+The same panel shows a compact recovery card for logs, deployment, rollback,
+backup and restore, and ownership. It remains guidance: DevHub does not execute
+recovery actions.
 
 The next agent workflow is:
 

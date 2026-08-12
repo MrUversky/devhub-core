@@ -1,6 +1,6 @@
 ---
 name: devhub-registry
-description: Reconcile projects and runnable services with a self-hosted DevHub registry and answer operational questions from its catalog. Use when the user asks to register, add, sync, reconcile, update, find, open, start, recover or inspect a project or service; asks where something runs, whether it is reachable, safe, monitored, backed up or recoverable; asks for an App Passport or production-readiness review; reports a changed URL, host, health check, lifecycle or runtime; or asks to detect DevHub catalog drift.
+description: Reconcile projects and runnable services with a self-hosted DevHub registry and answer operational questions from its catalog. Use when the user asks to register, add, sync, reconcile, update, find, open, start, recover or inspect a project or service; asks where something runs, whether it is reachable, safe, monitored, backed up or recoverable; asks for an App Passport, portfolio review or production-readiness review; reports a changed URL, host, health check, lifecycle or runtime; or asks to detect DevHub catalog drift.
 ---
 
 # DevHub Registry
@@ -13,6 +13,7 @@ Treat the configured DevHub instance as the operational map for its owner. Use a
 - For “register”, “sync”, “update”, or a reported project change: inspect the current project, find its DevHub record, and prepare a minimal reviewed catalog change.
 - For “check drift”: compare repository evidence with the current record and report `in-sync`, `drift`, or `unknown`. Prefer `unknown` over an invented fact.
 - For “is this safe?”, “how production-ready is it?”, or “create an App Passport”: inspect evidence for the selected readiness profile and propose explicit `verified`, `declared`, `missing`, `not-applicable`, or `unknown` checks.
+- For “review everything I shipped” or “what should I fix first?”: use `review-portfolio --json` from an available checkout, treat every result as a catalog evidence question, and prioritize the highest-harm reversible next action. Do not report a percentage or imply that unknown proves a production defect.
 
 ## Find the DevHub instance
 
@@ -44,13 +45,14 @@ Do not use blind port scanning. A listening port does not establish ownership, l
 
 ## Inspect operational readiness
 
-Use the service's App Passport as an evidence ledger, not a score guessed from framework conventions. Select the smallest fitting profile: `personal`, `internal`, `customer-facing`, or `sensitive`. Review monitoring, alerting, backup, restore, rollback, security review, privacy, ownership, cost, and deployment evidence when they apply.
+Use the service's App Passport as an evidence ledger, not a score guessed from framework conventions. Select the smallest fitting profile: `personal`, `internal`, `customer-facing`, or `sensitive`. Record only non-secret operating facts that can be reviewed: owner or accountable role, data classification, cost model, deployment provider/revision/time and critical dependencies. Review monitoring, alerting, backup, restore, rollback, security review, privacy, ownership, cost, and deployment evidence when they apply.
 
 - Mark `verified` only when a reproducible check, reviewed document, or approved integration supports it. Include provenance and freshness.
 - Use `declared` for an operator statement that has not been independently checked, `missing` for a known gap, and `unknown` when the evidence is absent or inconclusive.
 - Use `not-applicable` only with an explicit reason. Do not convert an inconvenient unknown into not-applicable.
 - Treat expired evidence as stale. Recommend a new observation instead of repeating the old conclusion as current.
 - Never place secrets or secret-bearing URLs in evidence notes. Link to reviewed documentation, not credentials.
+- Dependency records identify a provider or safe console/status/documentation link; never copy a database connection string, provider token or raw configuration.
 - Prioritize the next action by likely harm and reversibility: exposure and data loss before cost and convenience.
 
 An App Passport does not replace monitoring, backups, a security review, or a deployment system. It makes their presence, absence, source, and freshness inspectable from the same operational map.

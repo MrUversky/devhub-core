@@ -19,6 +19,36 @@ Use stable lowercase kebab-case IDs. Renaming IDs breaks bookmarks and status
 history. Register two services separately when they have different URLs,
 processes, health checks, hosts, owners or lifecycles.
 
+## Initialize a catalog safely
+
+Create a deterministic starter catalog in a new location without modifying the
+included demo:
+
+```bash
+npm run devhub -- init-catalog ./my-catalog \
+  --host-id developer-laptop \
+  --host-name "Developer laptop" \
+  --host-kind mac \
+  --host-location local
+```
+
+The command is a dry-run unless `--apply` is present. Its plan names the exact
+`hosts.yaml` file and `projects/` directory it would create. After review,
+repeat it with `--apply`. Apply accepts only an absent or empty destination,
+never overwrites files, supplies no machine-derived defaults and immediately
+runs the same strict host/project validation used by the catalog compiler.
+
+Use `--json` for an agent-readable plan. Host IDs must be stable lowercase
+kebab-case; host kind is `mac`, `linux` or `cloud`, and location is `local`,
+`remote` or `cloud`. A host name is descriptive metadata, not a credential.
+
+Select the new catalog explicitly when building or running DevHub:
+
+```bash
+DEVHUB_CATALOG_DIR="$PWD/my-catalog" npm run devhub -- validate
+DEVHUB_CATALOG_DIR="$PWD/my-catalog" npm run dev
+```
+
 ## Registration ownership
 
 - `registration: native`: a repository you control owns
@@ -95,6 +125,33 @@ privacy, ownership, cost and deployment. Evidence is `verified`, `declared`,
 `integration` or `catalog` source. Expired verification is shown as stale.
 DevHub does not compute a universal readiness score, run scanners or store
 secrets; unknown never looks like a pass.
+
+The optional passport inventory keeps safe operating facts beside that
+evidence:
+
+```yaml
+readiness:
+  profile: customer-facing
+  owner: Product owner
+  dataClassification: personal
+  costModel: metered
+  deployment:
+    source: integration
+    provider: Example Cloud
+    revision: release-42
+    deployedAt: 2026-08-13T10:00:00Z
+  dependencies:
+    - id: primary-database
+      kind: data-store
+      name: Primary database
+      criticality: required
+      provider: Example Database
+```
+
+Dependency kinds are `data-store`, `external-api`, `auth`, `payment`,
+`messaging`, `storage`, `ai-model` or `other`. Criticality is `required`,
+`degraded` or `optional`. Store names and safe documentation links only; never
+connection strings or credentials.
 
 ## Status and probes
 

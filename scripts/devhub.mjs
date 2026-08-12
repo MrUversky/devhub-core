@@ -5,8 +5,15 @@ import path from "node:path";
 import process from "node:process";
 import { promisify } from "node:util";
 import { collectDoctorFindings, readSourceCatalog } from "./catalog-tools.mjs";
+import {
+  CatalogInitError,
+  formatCatalogInit,
+  initializeCatalog,
+  parseCatalogInitArguments,
+} from "./catalog-init.mjs";
 import { resolveDevHubPaths, runtimeHostId } from "./devhub-config.mjs";
 import { formatHostInspection, HostInspectionError, inspectHost } from "./host-inspection.mjs";
+import { formatPortfolioReview, reviewPortfolio } from "./portfolio-review.mjs";
 import {
   applyNativeReconciliation,
   createOverlayProposal,
@@ -33,22 +40,26 @@ function usage() {
   console.log(`DevHub registry helper
 
 Usage:
+  npm run devhub -- init-catalog <destination> --host-id <id> --host-name <name> --host-kind <mac|linux|cloud> --host-location <local|remote|cloud> [--apply] [--json]
   npm run devhub -- init <project-directory>
   npm run devhub -- overlay <project-id>
   npm run devhub -- propose-overlay <project-directory> [stable-id] [--json]
   npm run devhub -- register <project-directory>
   npm run devhub -- validate [--check]
   npm run devhub -- doctor [--json]
+  npm run devhub -- review-portfolio [--json]
   npm run devhub -- inspect-host [host-id] [--json]
   npm run devhub -- diff <project-directory> [--json]
   npm run devhub -- reconcile <project-directory> [--json] [--apply]
 
+init-catalog plans a deterministic starter catalog; --apply creates it only when the destination is absent or empty.
 init creates <project>/.devhub/project.yaml from the template.
 overlay creates a DevHub-only manifest without modifying the project.
 propose-overlay prints an evidence-backed candidate without modifying the project or live catalog.
 register copies that manifest into DevHub's reviewed central catalog.
 validate rebuilds the catalog; --check verifies generated files without writing.
 doctor reports actionable catalog debt without changing files.
+review-portfolio builds an evidence-backed readiness and recovery queue without scanning or changing anything.
 inspect-host performs one-shot read-only matching against reviewed local runtime evidence.
 diff reports field-level semantic drift; exit 0 means clean, 2 drift and 3 invalid.
 reconcile is a reviewed dry-run plan by default. --apply explicitly refreshes an eligible native record.`);
@@ -81,6 +92,11 @@ function printDoctor(findings) {
 try {
 if (!command || command === "help" || command === "--help") {
   usage();
+} else if (command === "init-catalog") {
+  const initOptions = parseCatalogInitArguments(args);
+  const result = await initializeCatalog(initOptions);
+  if (initOptions.json) console.log(JSON.stringify(result, null, 2));
+  else console.log(formatCatalogInit(result));
 } else if (command === "init") {
   const destinationDirectory = path.join(target, ".devhub");
   const destination = path.join(destinationDirectory, "project.yaml");
@@ -143,6 +159,11 @@ if (!command || command === "help" || command === "--help") {
   if (json) console.log(JSON.stringify({ version: 1, command: "doctor", readOnly: true, runtimeHostId: currentHostId, findings }, null, 2));
   else printDoctor(findings);
   if (findings.some((finding) => finding.severity === "error")) process.exitCode = 1;
+} else if (command === "review-portfolio") {
+  const sourceCatalog = await readSourceCatalog(root, { paths });
+  const review = reviewPortfolio(sourceCatalog);
+  if (json) console.log(JSON.stringify(review, null, 2));
+  else console.log(formatPortfolioReview(review));
 } else if (command === "inspect-host") {
   const configuredHostId = runtimeHostId();
   if (rawTarget && configuredHostId && rawTarget !== configuredHostId) {
@@ -184,7 +205,7 @@ if (!command || command === "help" || command === "--help") {
   process.exitCode = 1;
 }
 } catch (error) {
-  const expected = error instanceof ReconciliationApplyError;
+  const expected = error instanceof ReconciliationApplyError || error instanceof CatalogInitError;
   const failure = {
     version: 2,
     command: command ?? "unknown",

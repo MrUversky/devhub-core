@@ -136,12 +136,49 @@
         "url": { "type": "string", "format": "uri", "pattern": "^https?://" }
       }
     },
+    "passportDeployment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source"],
+      "properties": {
+        "source": { "enum": ["operator", "agent", "integration", "catalog"] },
+        "provider": { "type": "string", "minLength": 1 },
+        "revision": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "deployedAt": { "type": "string", "format": "date-time" },
+        "url": { "type": "string", "format": "uri", "pattern": "^https?://" }
+      }
+    },
+    "passportDependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "name", "criticality"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": {
+          "enum": ["data-store", "external-api", "auth", "payment", "messaging", "storage", "ai-model", "other"]
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "criticality": { "enum": ["required", "degraded", "optional"] },
+        "provider": { "type": "string", "minLength": 1 },
+        "url": { "type": "string", "format": "uri", "pattern": "^https?://" },
+        "note": { "type": "string", "minLength": 1 }
+      }
+    },
     "readiness": {
       "type": "object",
       "additionalProperties": false,
       "required": ["profile", "evidence"],
       "properties": {
         "profile": { "enum": ["personal", "internal", "customer-facing", "sensitive"] },
+        "owner": { "type": "string", "minLength": 1 },
+        "dataClassification": { "enum": ["none", "internal", "personal", "sensitive", "regulated", "unknown"] },
+        "costModel": { "enum": ["free", "fixed", "metered", "unknown"] },
+        "deployment": { "$ref": "#/$defs/passportDeployment" },
+        "dependencies": {
+          "type": "array",
+          "maxItems": 50,
+          "items": { "$ref": "#/$defs/passportDependency" }
+        },
         "evidence": {
           "type": "array",
           "maxItems": 50,

@@ -2,6 +2,15 @@
 
 Notable changes to the public DevHub snapshot are recorded here.
 
+## 0.6.0-alpha.1 — Operational context
+
+- Added profile-specific App Passport expectations without a magic score.
+- Added non-secret owner, data, cost, deployment and dependency facts.
+- Added a recovery and ownership card to service details.
+- Added a read-only Portfolio Guardian CLI and dashboard overview.
+- Extended the Codex workflow to gather reviewed operating facts and prioritize
+  portfolio evidence gaps without scanning or executing production actions.
+
 ## 0.5.0-alpha.1 — Public alpha
 
 - Added the product promise: “Git remembers the code. DevHub remembers how it runs.”

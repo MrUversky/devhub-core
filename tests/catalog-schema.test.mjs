@@ -256,6 +256,59 @@ test("strict validation accepts evidence-backed App Passports and rejects unsafe
   assert.throws(() => validateProjectDocument(project, options), /readiness\.evidence\[0\]\.url: must not contain URL credentials/);
 });
 
+test("App Passport records non-secret ownership, deployment and dependency facts", () => {
+  const project = {
+    version: 1,
+    id: "example-app",
+    title: "Example app",
+    registration: "native",
+    description: "Example",
+    lifecycle: "active",
+    kind: "product",
+    services: [{
+      id: "api",
+      name: "API",
+      kind: "api",
+      environment: "production",
+      host: "managed-cloud",
+      runtime: "managed",
+      mode: "managed",
+      visibility: "authenticated",
+      readiness: {
+        profile: "customer-facing",
+        owner: "Example product owner",
+        dataClassification: "personal",
+        costModel: "metered",
+        deployment: {
+          source: "integration",
+          provider: "Example Cloud",
+          revision: "release-42",
+          deployedAt: "2026-08-13T10:00:00Z",
+          url: "https://deployments.example.test/release-42",
+        },
+        dependencies: [{
+          id: "primary-database",
+          kind: "data-store",
+          name: "Primary database",
+          criticality: "required",
+          provider: "Example Database",
+          url: "https://console.example.test/database",
+          note: "Stores fictional customer records for the demo.",
+        }],
+        evidence: [],
+      },
+    }],
+  };
+  const options = { source: "example-app.yaml", hostIds: new Set(["managed-cloud"]) };
+
+  assert.doesNotThrow(() => validateProjectDocument(project, options));
+  project.services[0].readiness.dependencies.push({ ...project.services[0].readiness.dependencies[0] });
+  assert.throws(() => validateProjectDocument(project, options), /duplicates dependency primary-database/);
+  project.services[0].readiness.dependencies.pop();
+  project.services[0].readiness.dependencies[0].url = "https://user:password@console.example.test/database";
+  assert.throws(() => validateProjectDocument(project, options), /dependencies\[0\]\.url: must not contain URL credentials/);
+});
+
 test("strict validation accepts a canonical endpoint with a required host fallback", () => {
   const project = {
     version: 1,

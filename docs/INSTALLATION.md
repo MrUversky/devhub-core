@@ -65,6 +65,22 @@ npm run build
 npm test
 ```
 
+For a real installation, keep the included fictional demo intact and initialize
+a separate catalog. The first command is a read-only plan; add `--apply` only
+after reviewing the listed paths:
+
+```bash
+npm run devhub -- init-catalog ./my-catalog \
+  --host-id devhub-server \
+  --host-name "DevHub server" \
+  --host-kind linux \
+  --host-location local
+```
+
+Then export `DEVHUB_CATALOG_DIR="$PWD/my-catalog"` for validation, builds and
+the running process. See [Configuration](CONFIGURATION.md) for the complete
+non-overwrite and host-field contract.
+
 For local development:
 
 ```bash
