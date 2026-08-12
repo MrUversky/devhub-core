@@ -60,6 +60,7 @@ protects `/mcp`; it does not add login protection to the web dashboard.
 
 ```bash
 npm ci
+npm run devhub -- init --catalog
 npm run devhub -- validate --check
 npm run build
 npm test

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, readdir, rm, unlink, writeFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
@@ -34,6 +34,7 @@ function usage() {
 
 Usage:
   npm run devhub -- init <project-directory>
+  npm run devhub -- init --catalog [catalog-directory] [--dry-run] [--json]
   npm run devhub -- overlay <project-id>
   npm run devhub -- propose-overlay <project-directory> [stable-id] [--json]
   npm run devhub -- register <project-directory>
@@ -43,7 +44,7 @@ Usage:
   npm run devhub -- diff <project-directory> [--json]
   npm run devhub -- reconcile <project-directory> [--json] [--apply]
 
-init creates <project>/.devhub/project.yaml from the template.
+init creates <project>/.devhub/project.yaml from the template, or --catalog creates a starter catalog.
 overlay creates a DevHub-only manifest without modifying the project.
 propose-overlay prints an evidence-backed candidate without modifying the project or live catalog.
 register copies that manifest into DevHub's reviewed central catalog.
@@ -54,10 +55,11 @@ diff reports field-level semantic drift; exit 0 means clean, 2 drift and 3 inval
 reconcile is a reviewed dry-run plan by default. --apply explicitly refreshes an eligible native record.`);
 }
 
-async function runCompiler({ check = false, quiet = false } = {}) {
+async function runCompiler({ check = false, quiet = false, catalogDir = null } = {}) {
   const environment = { ...process.env };
   if (check) environment.DEVHUB_CATALOG_CHECK = "1";
   else delete environment.DEVHUB_CATALOG_CHECK;
+  if (catalogDir) environment.DEVHUB_CATALOG_DIR = catalogDir;
   const { stdout } = await execFileAsync(process.execPath, [path.join(root, "scripts/compile-catalog.mjs")], {
     cwd: paths.root,
     env: environment,
@@ -82,18 +84,123 @@ try {
 if (!command || command === "help" || command === "--help") {
   usage();
 } else if (command === "init") {
-  const destinationDirectory = path.join(target, ".devhub");
-  const destination = path.join(destinationDirectory, "project.yaml");
-  await mkdir(destinationDirectory, { recursive: true });
-  try {
-    await readFile(destination, "utf8");
-    throw new Error(`${destination} already exists`);
-  } catch (error) {
-    if (error?.code !== "ENOENT") throw error;
+  const isCatalog = flags.has("--catalog");
+  if (isCatalog) {
+    const dryRun = flags.has("--dry-run");
+    const catalogDir = rawTarget ? path.resolve(rawTarget) : paths.catalogDirectory;
+    const hostsPath = path.join(catalogDir, "hosts.yaml");
+    const projectsDir = path.join(catalogDir, "projects");
+    const starterProjectPath = path.join(projectsDir, "devhub.yaml");
+
+    try {
+      const entries = await readdir(catalogDir);
+      if (entries.length > 0) {
+        const error = new Error(`Catalog destination ${catalogDir} already contains files or directories; refuses to overwrite`);
+        error.code = "catalog-destination-not-empty";
+        throw error;
+      }
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+
+    const starterHostsTemplate = path.join(root, "templates/catalog/hosts.yaml");
+    const starterProjectTemplate = path.join(root, "templates/catalog/projects/devhub.yaml");
+
+    if (dryRun) {
+      if (json) {
+        console.log(JSON.stringify({
+          version: 1,
+          command: "init",
+          mode: "catalog",
+          readOnly: true,
+          status: "dry-run",
+          destination: catalogDir,
+          plannedFiles: [
+            { file: "hosts.yaml", path: hostsPath },
+            { file: "projects/devhub.yaml", path: starterProjectPath },
+          ],
+        }, null, 2));
+      } else {
+        console.log(`DevHub catalog initialization (dry-run)`);
+        console.log(`Destination: ${catalogDir}`);
+        console.log("Would create:");
+        console.log(`- ${hostsPath}`);
+        console.log(`- ${starterProjectPath}`);
+        console.log("Run without --dry-run to initialize the catalog.");
+      }
+    } else {
+      await mkdir(catalogDir, { recursive: true });
+      const targetPaths = resolveDevHubPaths(root, { ...process.env, DEVHUB_CATALOG_DIR: catalogDir });
+      await withCatalogMutationLock(targetPaths, async () => {
+        const hostsContent = await readFile(starterHostsTemplate, "utf8");
+        const projectContent = await readFile(starterProjectTemplate, "utf8");
+
+        const createdFiles = [];
+        const createdDirs = [];
+
+        try {
+          let projectsDirExisted = false;
+          try {
+            await readdir(projectsDir);
+            projectsDirExisted = true;
+          } catch {
+            // directory did not exist
+          }
+
+          await mkdir(projectsDir, { recursive: true });
+          if (!projectsDirExisted) createdDirs.push(projectsDir);
+
+          await writeFile(hostsPath, hostsContent, "utf8");
+          createdFiles.push(hostsPath);
+
+          await writeFile(starterProjectPath, projectContent, "utf8");
+          createdFiles.push(starterProjectPath);
+
+          await runCompiler({ quiet: true, catalogDir });
+        } catch (error) {
+          for (const file of createdFiles) {
+            await unlink(file).catch(() => {});
+          }
+          for (const dir of createdDirs) {
+            await rm(dir, { recursive: true, force: true }).catch(() => {});
+          }
+          throw error;
+        }
+
+        if (json) {
+          console.log(JSON.stringify({
+            version: 1,
+            command: "init",
+            mode: "catalog",
+            readOnly: false,
+            status: "initialized",
+            destination: catalogDir,
+            files: [hostsPath, starterProjectPath],
+          }, null, 2));
+        } else {
+          console.log(`Initialized starter catalog in ${catalogDir}`);
+          console.log("Created:");
+          console.log(`- ${hostsPath}`);
+          console.log(`- ${starterProjectPath}`);
+          console.log("Compiled catalog outputs: app/generated/catalog.json, public/catalog.json");
+          console.log("Next: Run `npm run devhub -- validate --check` to verify your catalog.");
+        }
+      });
+    }
+  } else {
+    const destinationDirectory = path.join(target, ".devhub");
+    const destination = path.join(destinationDirectory, "project.yaml");
+    await mkdir(destinationDirectory, { recursive: true });
+    try {
+      await readFile(destination, "utf8");
+      throw new Error(`${destination} already exists`);
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+    await copyFile(path.join(root, "templates/project.yaml"), destination);
+    console.log(`Created ${destination}`);
+    console.log("Edit id, title, host and services, then run: npm run devhub -- register <project-directory>");
   }
-  await copyFile(path.join(root, "templates/project.yaml"), destination);
-  console.log(`Created ${destination}`);
-  console.log("Edit id, title, host and services, then run: npm run devhub -- register <project-directory>");
 } else if (command === "register") {
   const registration = await registerNativeManifest({
     root,
@@ -184,7 +291,7 @@ if (!command || command === "help" || command === "--help") {
   process.exitCode = 1;
 }
 } catch (error) {
-  const expected = error instanceof ReconciliationApplyError;
+  const expected = error instanceof ReconciliationApplyError || error?.code === "catalog-destination-not-empty";
   const failure = {
     version: 2,
     command: command ?? "unknown",

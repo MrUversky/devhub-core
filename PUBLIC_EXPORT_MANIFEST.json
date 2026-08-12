@@ -64,7 +64,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "cc87e24bd37df357f4b614b0c89494aacb1da740a122ade614807fed21e9647c"
+      "sha256": "4fc33f0c5eb42b955ca67dd0d94761438327bf7dc6e003e44549eb6ec97627ac"
     },
     {
       "path": "SECURITY.md",
@@ -156,11 +156,11 @@
     },
     {
       "path": "docs/CONFIGURATION.md",
-      "sha256": "88da8877c985b33872e8a08bb449afab5bfeb9295ac2e9bd702d5578b9546f64"
+      "sha256": "376a1f71ce6f287c47bf11b4b97c6beb6f3978b18a7c1c074b47ee22e4130013"
     },
     {
       "path": "docs/INSTALLATION.md",
-      "sha256": "5d1858d23d6e0378006382c94a2cbe0e18e9fba1a1d07adf920dc0e2eee15a9c"
+      "sha256": "f06b4ca95d79e192703c0c6e8730b0bf4303536ce80f1c9d1075bc8cd0771fca"
     },
     {
       "path": "docs/INTEGRATIONS_CODEX.md",
@@ -292,7 +292,7 @@
     },
     {
       "path": "scripts/devhub.mjs",
-      "sha256": "dff37cd9dec518a465cc3bc4d0ef8e29c8fefdc49c9617330626cd3d758da7fd"
+      "sha256": "94ba8ac5b6fceddc5bba173901dc9867f66667e4cfa739b10cdb979d06ed1e23"
     },
     {
       "path": "scripts/host-inspection.mjs",
@@ -319,6 +319,14 @@
       "sha256": "8a29a97536fbdb27348dff5a01ab504b207aed1289ac6d3c569464fa9b415bf1"
     },
     {
+      "path": "templates/catalog/hosts.yaml",
+      "sha256": "98b7e9bdc8080c8730b3af2794b83600269ce5288f81026490e9843e83c3565e"
+    },
+    {
+      "path": "templates/catalog/projects/devhub.yaml",
+      "sha256": "874d93ad2d04bda08e036fba6bd3a99e926453d0b945844b286414c0e9501638"
+    },
+    {
       "path": "templates/project.yaml",
       "sha256": "f0d7d90a032715c0464100a967aa1dafb45e11ff3c1bd6047b380b9f2d1ef0dd"
     },
@@ -332,7 +340,7 @@
     },
     {
       "path": "tests/devhub-cli.test.mjs",
-      "sha256": "394e5eb345cf5fc25f293f2a1b60d4ccee78e904900c51d3902cace1a29dd978"
+      "sha256": "cb3409d3bdec1d76dd767fd7d4bf64c0ca26dbb423261b6ae10ddf07d6c9d1ae"
     },
     {
       "path": "tests/host-inspection.test.mjs",

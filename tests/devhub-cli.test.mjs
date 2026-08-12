@@ -253,3 +253,202 @@ test("reconcile is a reviewed dry-run plan unless apply is explicit", async () =
     await rm(fixture.temporaryRoot, { recursive: true, force: true });
   }
 });
+
+test("init --catalog --dry-run prints planned files without modifying filesystem", async () => {
+  const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "devhub-init-dryrun-"));
+  try {
+    const targetCatalog = path.join(temporaryRoot, "catalog");
+    const result = await runWithEnvironment(["init", "--catalog", targetCatalog, "--dry-run"]);
+    assert.equal(result.exitCode, 0);
+    assert.match(result.stdout, /DevHub catalog initialization \(dry-run\)/);
+    assert.match(result.stdout, /Would create:/);
+
+    await assert.rejects(readFile(path.join(targetCatalog, "hosts.yaml"), "utf8"), /ENOENT/);
+    await assert.rejects(readFile(path.join(targetCatalog, "projects/devhub.yaml"), "utf8"), /ENOENT/);
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("init --catalog --dry-run --json returns structured dry-run JSON", async () => {
+  const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "devhub-init-json-"));
+  try {
+    const targetCatalog = path.join(temporaryRoot, "catalog");
+    const result = await runWithEnvironment(["init", "--catalog", targetCatalog, "--dry-run", "--json"]);
+    assert.equal(result.exitCode, 0);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.command, "init");
+    assert.equal(output.mode, "catalog");
+    assert.equal(output.readOnly, true);
+    assert.equal(output.status, "dry-run");
+    assert.equal(output.destination, targetCatalog);
+    assert.equal(output.plannedFiles.length, 2);
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("init --catalog creates starter catalog and generated JSON validates immediately", async () => {
+  const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "devhub-init-exec-"));
+  try {
+    await cp(path.join(root, "templates"), path.join(temporaryRoot, "templates"), { recursive: true });
+    await cp(path.join(root, "scripts"), path.join(temporaryRoot, "scripts"), { recursive: true });
+    await mkdir(path.join(temporaryRoot, "app/generated"), { recursive: true });
+    await mkdir(path.join(temporaryRoot, "public"), { recursive: true });
+
+    const targetCatalog = path.join(temporaryRoot, "catalog");
+    const initResult = await runWithEnvironment(["init", "--catalog", targetCatalog], {
+      DEVHUB_CATALOG_DIR: targetCatalog,
+    });
+    assert.equal(initResult.exitCode, 0);
+    assert.match(initResult.stdout, /Initialized starter catalog/);
+
+    const hostsContent = await readFile(path.join(targetCatalog, "hosts.yaml"), "utf8");
+    const projectContent = await readFile(path.join(targetCatalog, "projects/devhub.yaml"), "utf8");
+    assert.match(hostsContent, /id: local-server/);
+    assert.match(projectContent, /id: devhub/);
+
+    const checkResult = await runWithEnvironment(["validate", "--check"], {
+      DEVHUB_CATALOG_DIR: targetCatalog,
+    });
+    assert.equal(checkResult.exitCode, 0);
+    assert.match(checkResult.stdout, /\(current\)/);
+  } finally {
+    await run("validate");
+    await rm(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("init --catalog refuses non-empty destination when arbitrary file exists", async () => {
+  const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "devhub-init-file-"));
+  try {
+    const targetCatalog = path.join(temporaryRoot, "catalog");
+    await mkdir(targetCatalog, { recursive: true });
+    await writeFile(path.join(targetCatalog, "notes.txt"), "some content\n");
+
+    const result = await runWithEnvironment(["init", "--catalog", targetCatalog, "--json"]);
+    assert.equal(result.exitCode, 3);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.error.code, "catalog-destination-not-empty");
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("init --catalog refuses non-empty destination when arbitrary directory exists", async () => {
+  const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "devhub-init-dir-"));
+  try {
+    const targetCatalog = path.join(temporaryRoot, "catalog");
+    await mkdir(path.join(targetCatalog, "custom-folder"), { recursive: true });
+
+    const result = await runWithEnvironment(["init", "--catalog", targetCatalog, "--json"]);
+    assert.equal(result.exitCode, 3);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.error.code, "catalog-destination-not-empty");
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("init --catalog refuses non-empty destination when hosts.yaml already exists", async () => {
+  const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "devhub-init-nonempty-hosts-"));
+  try {
+    const targetCatalog = path.join(temporaryRoot, "catalog");
+    await mkdir(targetCatalog, { recursive: true });
+    await writeFile(path.join(targetCatalog, "hosts.yaml"), "version: 1\nhosts: []\n");
+
+    const result = await runWithEnvironment(["init", "--catalog", targetCatalog, "--json"]);
+    assert.equal(result.exitCode, 3);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.error.code, "catalog-destination-not-empty");
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("init --catalog refuses non-empty destination when projects directory exists", async () => {
+  const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "devhub-init-nonempty-projects-dir-"));
+  try {
+    const targetCatalog = path.join(temporaryRoot, "catalog");
+    await mkdir(path.join(targetCatalog, "projects"), { recursive: true });
+
+    const result = await runWithEnvironment(["init", "--catalog", targetCatalog, "--json"]);
+    assert.equal(result.exitCode, 3);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.error.code, "catalog-destination-not-empty");
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("init --catalog refuses non-empty destination when existing project file exists", async () => {
+  const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "devhub-init-nonempty-projects-file-"));
+  try {
+    const targetCatalog = path.join(temporaryRoot, "catalog");
+    await mkdir(path.join(targetCatalog, "projects"), { recursive: true });
+    await writeFile(path.join(targetCatalog, "projects/custom.yaml"), "version: 1\n");
+
+    const result = await runWithEnvironment(["init", "--catalog", targetCatalog, "--json"]);
+    assert.equal(result.exitCode, 3);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.error.code, "catalog-destination-not-empty");
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("project-level init creates .devhub/project.yaml and refuses duplicate initialization", async () => {
+  const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "devhub-init-project-"));
+  try {
+    const targetProject = path.join(temporaryRoot, "my-project");
+    await mkdir(targetProject, { recursive: true });
+
+    const firstRun = await runWithEnvironment(["init", targetProject]);
+    assert.equal(firstRun.exitCode, 0);
+    assert.match(firstRun.stdout, /Created /);
+
+    const projectYaml = await readFile(path.join(targetProject, ".devhub/project.yaml"), "utf8");
+    assert.match(projectYaml, /id: change-me/);
+
+    const secondRun = await runWithEnvironment(["init", targetProject]);
+    assert.equal(secondRun.exitCode, 3);
+    assert.match(secondRun.stderr, /already exists/);
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("init without --catalog flag treats positional target as project directory", async () => {
+  const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "devhub-init-positional-"));
+  try {
+    const targetCatalog = path.join(temporaryRoot, "catalog");
+    await mkdir(targetCatalog, { recursive: true });
+
+    const result = await runWithEnvironment(["init", targetCatalog]);
+    assert.equal(result.exitCode, 0);
+    assert.match(result.stdout, /Created /);
+
+    const projectYaml = await readFile(path.join(targetCatalog, ".devhub/project.yaml"), "utf8");
+    assert.match(projectYaml, /id: change-me/);
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("failed initialization cleans up created files and leaves no partial catalog", async () => {
+  const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "devhub-init-rollback-"));
+  try {
+    const targetCatalog = path.join(temporaryRoot, "catalog");
+    const projectsDir = path.join(targetCatalog, "projects");
+    await mkdir(projectsDir, { recursive: true });
+    // Make devhub.yaml a directory so writing project file fails after hosts.yaml is written
+    await mkdir(path.join(projectsDir, "devhub.yaml"), { recursive: true });
+
+    const result = await runWithEnvironment(["init", "--catalog", targetCatalog]);
+
+    assert.equal(result.exitCode, 3);
+    await assert.rejects(readFile(path.join(targetCatalog, "hosts.yaml"), "utf8"), /ENOENT/);
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true });
+  }
+});

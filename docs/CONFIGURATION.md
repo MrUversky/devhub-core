@@ -5,11 +5,13 @@ JSON is consumed by the dashboard and MCP.
 
 ## Catalog layout
 
+Initialize a new catalog using `npm run devhub -- init --catalog` (or test with `--dry-run`). The command creates a clean, secret-free starter host inventory and starter project manifest, and compiles generated runtime JSON files immediately. Existing catalog destinations are refused to prevent accidental overwriting.
+
 ```text
 catalog/
 ├── hosts.yaml
 └── projects/
-    └── example-app.yaml
+    └── devhub.yaml
 ```
 
 `catalog/hosts.yaml` assigns stable IDs to computers or cloud hosts. A project

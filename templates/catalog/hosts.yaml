@@ -1,0 +1,6 @@
+version: 1
+hosts:
+  - id: local-server
+    name: Local server
+    kind: linux
+    location: local

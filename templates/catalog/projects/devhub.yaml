@@ -1,0 +1,36 @@
+version: 1
+id: devhub
+title: DevHub
+registration: native
+aliases: [Service registry]
+description: Self-hosted operational map for developer tools.
+lifecycle: active
+kind: platform
+repository: owner/devhub
+tags: [registry]
+services:
+  - id: dashboard
+    name: Dashboard and MCP
+    kind: admin
+    environment: self-hosted
+    host: local-server
+    runtime: node
+    mode: always-on
+    visibility: local
+    url: http://127.0.0.1:3000
+    links:
+      - id: primary
+        type: primary
+        label: Open DevHub
+        url: http://127.0.0.1:3000
+      - id: repository
+        type: repository
+        label: Source repository
+        url: https://github.com/owner/devhub
+    probe:
+      type: http
+      url: http://127.0.0.1:3000
+      successStatuses: [200]
+      timeoutMs: 3000
+    commands:
+      verify: npm test

@@ -75,12 +75,13 @@ npm run lint
 
 ## Add your catalog
 
-1. Replace the demo hosts in `catalog/hosts.yaml`.
-2. Add one project file per project under `catalog/projects/`.
-3. Never put passwords, tokens, private keys, cookies or secret-bearing URLs
+1. Initialize a starter catalog structure with `npm run devhub -- init --catalog` (use `--dry-run` to preview).
+2. Customize hosts in `catalog/hosts.yaml`.
+3. Add one project file per project under `catalog/projects/`.
+4. Never put passwords, tokens, private keys, cookies or secret-bearing URLs
    in a manifest.
-4. Run `npm run devhub -- validate` to regenerate the reviewed runtime JSON.
-5. Commit the YAML and generated JSON together.
+5. Run `npm run devhub -- validate` to regenerate the reviewed runtime JSON.
+6. Commit the YAML and generated JSON together.
 
 Use `registration: native` when a repository you control should own
 `.devhub/project.yaml`. Use `registration: overlay` when the metadata is
