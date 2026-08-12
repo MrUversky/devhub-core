@@ -1,0 +1,53 @@
+version: 1
+id: change-me
+title: Change me
+registration: native
+aliases: []
+description: Explain what the project does and who uses it.
+lifecycle: discovery
+kind: product
+repository: owner/repository
+tags: []
+workspaces:
+  - host: developer-laptop
+    path: /absolute/path/to/project
+services:
+  - id: web
+    name: Web application
+    kind: web
+    environment: local
+    host: developer-laptop
+    runtime: node
+    mode: on-demand
+    visibility: local
+    url: http://127.0.0.1:3000
+    links:
+      - id: primary
+        type: primary
+        label: Open web application
+        url: http://127.0.0.1:3000
+      - id: docs
+        type: docs
+        label: Developer documentation
+        url: https://docs.example.test/project
+    probe:
+      type: http
+      url: http://127.0.0.1:3000/health
+      successStatuses: [200]
+      timeoutMs: 5000
+    readiness:
+      profile: personal
+      evidence:
+        - id: monitoring-status
+          check: monitoring
+          state: unknown
+          source: catalog
+          note: No reviewed monitoring evidence has been registered yet.
+        - id: recovery-status
+          check: restore
+          state: unknown
+          source: catalog
+          note: No reviewed restore test has been registered yet.
+    commands:
+      start: npm run dev
+      logs: npm run logs

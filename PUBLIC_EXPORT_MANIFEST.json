@@ -1,0 +1,374 @@
+{
+  "manifestVersion": 2,
+  "exporterVersion": 1,
+  "source": {
+    "commit": "536b77cf743490200b866b7d56b1c8badb2aab2e",
+    "state": "clean"
+  },
+  "files": [
+    {
+      "path": ".agents/plugins/marketplace.json",
+      "sha256": "3b865946545cd568f8ddde7de6dd06e53f745b1f2360ccc2e4884de2eb761d95"
+    },
+    {
+      "path": ".devhub-public-snapshot",
+      "sha256": "88140547da547d838f960bf8a711a71070b4be331f6e52ca4c51311940811e7f"
+    },
+    {
+      "path": ".dockerignore",
+      "sha256": "efd6f4b08d4a6b565143ebb3cb5ca8cae3a489922893ffdbc29c752680b05591"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug_report.yml",
+      "sha256": "c71180bd1111cfae234ef30fef5df8dbf826d1d64a13287c18d39a22f9207d37"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/config.yml",
+      "sha256": "1f103c6a9dd07cd13a9a6f17ace6b813f47747eb9cb7e00488cb2073caaf91bb"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/feature_request.yml",
+      "sha256": "b513f5576daafafed65d5f27c7bc3572a8b86390017088fca7d3552b8909de23"
+    },
+    {
+      "path": ".github/PULL_REQUEST_TEMPLATE.md",
+      "sha256": "3cf3d4252a151c3a5f46f58439f365263a063c196c84f176cd858c9d3a3edc07"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "sha256": "b0cb1ccbbd78a7a10b1381cf0c2719cdc4048b144eaca052ffa787c2dfc19723"
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "4624a0a8f44326ed2fe63ecfcf85aa96f18de010f31bd56889b001931074a1fb"
+    },
+    {
+      "path": ".openai/hosting.json",
+      "sha256": "b57bd22336925ffbc45e4323a8bf5b0165d1adc0c48e5440eafe718ff8c20747"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "sha256": "0533e1f3b0342cbb55ffa78a2b482740e5ac6498cf256ea06696ea80a4c02c36"
+    },
+    {
+      "path": "CODE_OF_CONDUCT.md",
+      "sha256": "cada3f8114060883a655d4b4616000034e4ad7cf7d7fd811cf669576374ebc85"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "sha256": "a250bbd9218ded008307fe9a11c0d05a819a5c847b0b00282d260ec769f2411e"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "28d1b95525605e138d3ece6c80aac09bd95d30f26467a20b1f4c000520a4c5c5"
+    },
+    {
+      "path": "README.md",
+      "sha256": "cc87e24bd37df357f4b614b0c89494aacb1da740a122ade614807fed21e9647c"
+    },
+    {
+      "path": "SECURITY.md",
+      "sha256": "59df47aead67a8f0a4f5c56eeec3d8259577ee60ca04e81c64ef0f667f6043f1"
+    },
+    {
+      "path": "SUPPORT.md",
+      "sha256": "05a23fa33da8fc5fbd563452b5ebeae0a01fddd6c792c6077d72b43ce666d749"
+    },
+    {
+      "path": "app/DevHubDashboard.tsx",
+      "sha256": "78ebc0899e38b4d68ff6f8e1cef5abda712f30a17c4f763d35dc2a66a8409343"
+    },
+    {
+      "path": "app/api/context/route.ts",
+      "sha256": "1dbe8c42ad32045c449e707b5c54c29a95a7bac462543e93eb5faf328fc5cbf4"
+    },
+    {
+      "path": "app/api/status/route.ts",
+      "sha256": "13aa5f78b77b2430e5f8501e8c0e882a1ede0cce408dbf2a46a9d4d3654c1ac8"
+    },
+    {
+      "path": "app/generated/catalog.json",
+      "sha256": "c05536e41d015bd16aee7b5635e3df71256a7a33e3b6b1b1074003c99da2b6e2"
+    },
+    {
+      "path": "app/globals.css",
+      "sha256": "e7fb35b88a976efe70deda02355562c1916e9e61f0182e8ac3cb530f16e6bdc3"
+    },
+    {
+      "path": "app/layout.tsx",
+      "sha256": "66093d50641ed5cac6862aa8501f006d1114dda694b2fbf83986121c21586df7"
+    },
+    {
+      "path": "app/mcp/route.ts",
+      "sha256": "26e8a65dbea76765950f9cadb2b3d317d4d81eb7814a6297b2607af4b9476290"
+    },
+    {
+      "path": "app/page.tsx",
+      "sha256": "46ec755da4d1cadf123d557fed64676d63cfe04aa9a471e1056b0e48ddb0f0a7"
+    },
+    {
+      "path": "build/sites-vite-plugin.ts",
+      "sha256": "81b7cbfaeb970611572256aba0e313425beb3809f6426f63750696c15d9c756b"
+    },
+    {
+      "path": "catalog/hosts.yaml",
+      "sha256": "44eb0392670db327a60a973623f6849280e2fbaaba12469ba779d306332ae833"
+    },
+    {
+      "path": "catalog/projects/devhub.yaml",
+      "sha256": "bd60ef44f2c7fc5e83c6e5921a28cfa69d52d5be21c31c7965fb64746d1625e9"
+    },
+    {
+      "path": "catalog/projects/example-app.yaml",
+      "sha256": "d0fedc49fade18a6ab6daa929b078dbe7f4be8a065f7d74094954fcbc9ca6dda"
+    },
+    {
+      "path": "deploy/docker/Dockerfile",
+      "sha256": "90b31e8b363c6b1b04b2388543c20b5c48267ad07fb810fb5370e50da35e6a3c"
+    },
+    {
+      "path": "deploy/docker/compose.yaml",
+      "sha256": "3f8c5673186de5f10d9e7543e39eba6548789a017b09fe7d0f6f7514d040648c"
+    },
+    {
+      "path": "deploy/docker/healthcheck.mjs",
+      "sha256": "62e684b790d76fe3ddf6ab2e5bcce7c1d02bd76ac7ba417febcc37e34a2bc50e"
+    },
+    {
+      "path": "deploy/systemd/devhub-portable-run",
+      "sha256": "2eb5f9cb237b2c019ebb7b7f0e52b6236b1a7a3071c53c16a4ffe57f2126efe0"
+    },
+    {
+      "path": "deploy/systemd/devhub-portable-update",
+      "sha256": "5e41c305603eb7c44a34c94fd31d439e7254dcb5490d5e750318773beecd5ec2"
+    },
+    {
+      "path": "deploy/systemd/devhub-portable.env.example",
+      "sha256": "9bc43ccbe4064d0766e26b15ddb7720d4b1004b1e446f772c1781a68b2754807"
+    },
+    {
+      "path": "deploy/systemd/devhub-portable.service.example",
+      "sha256": "a3c57e66519f210863c6c0d59d27e132d4d3a494003f8586072f744b22a4e62b"
+    },
+    {
+      "path": "docs/APP_PASSPORT.md",
+      "sha256": "e1f7796072533b8b0e4a19d50f61cb99fe1aac0b7fdfc6134d7571211aad9b1e"
+    },
+    {
+      "path": "docs/CONFIGURATION.md",
+      "sha256": "88da8877c985b33872e8a08bb449afab5bfeb9295ac2e9bd702d5578b9546f64"
+    },
+    {
+      "path": "docs/INSTALLATION.md",
+      "sha256": "5d1858d23d6e0378006382c94a2cbe0e18e9fba1a1d07adf920dc0e2eee15a9c"
+    },
+    {
+      "path": "docs/INTEGRATIONS_CODEX.md",
+      "sha256": "c6d9675787245dc492e04a547f45188028621138cf4f03ad4b4ac2b822bca65e"
+    },
+    {
+      "path": "docs/PRIVACY.md",
+      "sha256": "854d8542ca87f25dd23eabda5c7b700c60f012a4eb01a0e7955a0c3718780a75"
+    },
+    {
+      "path": "docs/PUBLIC_RELEASE.md",
+      "sha256": "9d4cdcb904af0b9f920e2174a9f863bc4ede9f87c88cf4b1c92dbfbcab24b99a"
+    },
+    {
+      "path": "eslint.config.mjs",
+      "sha256": "6090bd544865638d8c77a3443f037b3b289596a7ec1e1dccc3a13677e6d1ca83"
+    },
+    {
+      "path": "examples/demo/.devhub/project.yaml",
+      "sha256": "d0fedc49fade18a6ab6daa929b078dbe7f4be8a065f7d74094954fcbc9ca6dda"
+    },
+    {
+      "path": "examples/demo/catalog/hosts.yaml",
+      "sha256": "44eb0392670db327a60a973623f6849280e2fbaaba12469ba779d306332ae833"
+    },
+    {
+      "path": "examples/demo/catalog/projects/devhub.yaml",
+      "sha256": "bd60ef44f2c7fc5e83c6e5921a28cfa69d52d5be21c31c7965fb64746d1625e9"
+    },
+    {
+      "path": "examples/demo/catalog/projects/example-app.yaml",
+      "sha256": "d0fedc49fade18a6ab6daa929b078dbe7f4be8a065f7d74094954fcbc9ca6dda"
+    },
+    {
+      "path": "lib/catalog.ts",
+      "sha256": "5e63eefa76052828675dc6d634f90d19ce9a23c72aa0ea704b9f089f7f8c07ca"
+    },
+    {
+      "path": "lib/mcp-auth.ts",
+      "sha256": "3fbb096ea41218a0869eba5cf249e58c47a57b5e31ba206bb5a02db41ba133fb"
+    },
+    {
+      "path": "lib/mcp-server.ts",
+      "sha256": "fb06f0f065540725572fcd688633cbd3a160e11fb29c9ac3354bd44649fc2c48"
+    },
+    {
+      "path": "lib/mcp-tools.ts",
+      "sha256": "9371a2bb303ea801bad57ea06e56de4859fe4cc8e3c013f0dca1d8484a729204"
+    },
+    {
+      "path": "lib/status.ts",
+      "sha256": "39dfb46dc77f0066055ff701156046c6f516d609320d2ba5c45a44ea02bb1bbb"
+    },
+    {
+      "path": "next-env.d.ts",
+      "sha256": "a291a6b60536fec0a3b9d4ffd6d51179b463e9bc20281d7499d756813b4c07d5"
+    },
+    {
+      "path": "next.config.ts",
+      "sha256": "496898063c834c666510bdb5bb472bcf08e01ca8eef297da101ad12680c8fc93"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "c9c3706f76a936bb8b578a9d51af51276bfb52abe2afe4096e5c5674b72dfa89"
+    },
+    {
+      "path": "package.json",
+      "sha256": "b290c97aa1dc0501dc4d9856f86b4f8833cf72634a8c653b9b1bbc53710efd59"
+    },
+    {
+      "path": "plugins/devhub/.codex-plugin/plugin.json",
+      "sha256": "3b7d2e83e3018235862b428a519ecbc25422b8269a02d7a087d41c75fb5a07ed"
+    },
+    {
+      "path": "plugins/devhub/skills/devhub-registry/SKILL.md",
+      "sha256": "4708204bc8c0aba211b4b3d745e20e297f0cebfefd44dc6933f812665ad1bba1"
+    },
+    {
+      "path": "plugins/devhub/skills/devhub-registry/agents/openai.yaml",
+      "sha256": "cf515a35b46e80af8487797d733ed0d6ccc74d51dd0ee16d3e079c09e538b6e6"
+    },
+    {
+      "path": "postcss.config.mjs",
+      "sha256": "dfac7ac2d86d326a0e5adb024e7943c181393ed17a5fcb8f0315b24c7da6ddde"
+    },
+    {
+      "path": "public/catalog.json",
+      "sha256": "c05536e41d015bd16aee7b5635e3df71256a7a33e3b6b1b1074003c99da2b6e2"
+    },
+    {
+      "path": "public/devhub-preview.png",
+      "sha256": "2cf324ad73870dbcd131dc3d9d82db881b38af81ab49e65d41cbb9bf97764d1c"
+    },
+    {
+      "path": "public/favicon.svg",
+      "sha256": "d48f4124a8a1bf6620481b15bea8f89d05561235a075210cd282164d5f64b0b8"
+    },
+    {
+      "path": "public/og.png",
+      "sha256": "18c473c82f1287b688b1bd623de16fdf7230a4ed92a405760246d2f26f6239bd"
+    },
+    {
+      "path": "schema/hosts.schema.json",
+      "sha256": "3e26cdeb48ee57ac85f54cbc07d643110c8872188060ce9e425e6157e07977d0"
+    },
+    {
+      "path": "schema/project.schema.json",
+      "sha256": "988a9686d93947f4903a762263c855733c36c892135c3c76451b0ba8ccda623b"
+    },
+    {
+      "path": "scripts/build-release-artifacts.mjs",
+      "sha256": "5d133387d64542cccd68d5505add996f823596b19f2e6d8bebc3943d1949a3eb"
+    },
+    {
+      "path": "scripts/catalog-tools.mjs",
+      "sha256": "0f961485492a05a534d7ddd2641068e9d184cf93cc69141fd9bda68bcfef9bd3"
+    },
+    {
+      "path": "scripts/catalog-validation.mjs",
+      "sha256": "ebb7464f39f02a0d0fb9642ec9a9742b09eb4ae381a3051be63e61ea9436d65c"
+    },
+    {
+      "path": "scripts/compile-catalog.mjs",
+      "sha256": "13ec7d81fd54b1664752ed56becd36b0c84d9c94cff41892e9e6106a48ee4aaa"
+    },
+    {
+      "path": "scripts/devhub-config.mjs",
+      "sha256": "20ac7b08a59638201ea46ba22b81cfa5f58cf06fcb06e2ba3db5505ce7065eae"
+    },
+    {
+      "path": "scripts/devhub.mjs",
+      "sha256": "dff37cd9dec518a465cc3bc4d0ef8e29c8fefdc49c9617330626cd3d758da7fd"
+    },
+    {
+      "path": "scripts/host-inspection.mjs",
+      "sha256": "368767bc7a5f798b214a767f7226dbf5458df4aeb33ce2674b1d989afbad4c55"
+    },
+    {
+      "path": "scripts/reconciliation.mjs",
+      "sha256": "d2d2948a6a6d44933abb6954f65413d90593d3e47e183c14496d91e935a14fe0"
+    },
+    {
+      "path": "scripts/release-artifacts.mjs",
+      "sha256": "0f131002ef10ebf1c7518c67d37e70899c4ef51bac709a95301cf572f14482f5"
+    },
+    {
+      "path": "scripts/semantic-diff.mjs",
+      "sha256": "a14eec5e5c6d46ffa3260aaf3a8d6a3c6dda9fd096876d30d80b1cf33f2701e0"
+    },
+    {
+      "path": "scripts/verify-public-manifest.mjs",
+      "sha256": "493f3e9a6e74b8531429dd6a58736b2482115cffb252c919a86121094ff615c4"
+    },
+    {
+      "path": "scripts/verify-release-artifacts.mjs",
+      "sha256": "8a29a97536fbdb27348dff5a01ab504b207aed1289ac6d3c569464fa9b415bf1"
+    },
+    {
+      "path": "templates/project.yaml",
+      "sha256": "f0d7d90a032715c0464100a967aa1dafb45e11ff3c1bd6047b380b9f2d1ef0dd"
+    },
+    {
+      "path": "tests/catalog-schema.test.mjs",
+      "sha256": "9afd714ea21a81c4b7256860fe26a4e2a67253acf12ee597c9e7b22b257a8523"
+    },
+    {
+      "path": "tests/catalog.test.mjs",
+      "sha256": "4e634e926c4af84b9b0e5b1fb4f1937f6e72723a2df65eb654da8301dcec121f"
+    },
+    {
+      "path": "tests/devhub-cli.test.mjs",
+      "sha256": "394e5eb345cf5fc25f293f2a1b60d4ccee78e904900c51d3902cace1a29dd978"
+    },
+    {
+      "path": "tests/host-inspection.test.mjs",
+      "sha256": "a6f6d8be0ee0b6a9d5dc0d059607b96ee70dd4a14f551a5eaf5bd426648053e6"
+    },
+    {
+      "path": "tests/mcp.test.mjs",
+      "sha256": "8db4ed820bc1fb82bf08f44944ff996617e9174a84f7250cbe024cafa57f0c14"
+    },
+    {
+      "path": "tests/reconciliation.test.mjs",
+      "sha256": "5d63a2714f999e8b72de7f027603a7031d2c4d80824e381bef9787d947cc04d7"
+    },
+    {
+      "path": "tests/release-artifacts.test.mjs",
+      "sha256": "fc8c1660ac1f8cbc271369f494a33ae73d04d223dbdfa28d13308ca9d590fe94"
+    },
+    {
+      "path": "tests/rendered-html.test.mjs",
+      "sha256": "a93923548ea48082e7f89685918daa1c1e7d54cfdb3305d7ed31279352e44aaf"
+    },
+    {
+      "path": "tests/semantic-diff.test.mjs",
+      "sha256": "8262bb73a5a8a2cfd6f4778d2353f08876881b64bc90999cc347fd28e19a797d"
+    },
+    {
+      "path": "tsconfig.json",
+      "sha256": "379054f6cec60ebd0e18c47a3ce72b2cc1b3f7abd0037c668e87cb2070891147"
+    },
+    {
+      "path": "vite.config.ts",
+      "sha256": "9349a06d80d1e9e6a1831ea64b8d24d512801b796c2c34d4b0967abbae793c82"
+    },
+    {
+      "path": "worker/index.ts",
+      "sha256": "36ba57a8a9fecf0a94d4adb34ec799eb00b6e120cfc19b20e92581e7542a192c"
+    }
+  ]
+}

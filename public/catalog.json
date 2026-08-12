@@ -1,0 +1,218 @@
+{
+  "version": 1,
+  "hosts": [
+    {
+      "id": "developer-laptop",
+      "name": "Developer laptop",
+      "kind": "mac",
+      "location": "local"
+    },
+    {
+      "id": "devhub-server",
+      "name": "DevHub server",
+      "kind": "linux",
+      "location": "remote"
+    },
+    {
+      "id": "managed-cloud",
+      "name": "Managed cloud",
+      "kind": "cloud",
+      "location": "cloud"
+    }
+  ],
+  "projects": [
+    {
+      "version": 1,
+      "id": "devhub",
+      "title": "DevHub",
+      "registration": "native",
+      "aliases": [
+        "Service registry"
+      ],
+      "description": "Self-hosted operational map running with a fictional demo catalog.",
+      "lifecycle": "active",
+      "kind": "platform",
+      "repository": "example/devhub",
+      "tags": [
+        "demo",
+        "registry"
+      ],
+      "services": [
+        {
+          "id": "dashboard",
+          "name": "Dashboard and MCP",
+          "kind": "admin",
+          "environment": "self-hosted",
+          "host": "devhub-server",
+          "runtime": "node",
+          "mode": "always-on",
+          "visibility": "local",
+          "url": "http://127.0.0.1:3000",
+          "links": [
+            {
+              "id": "primary",
+              "type": "primary",
+              "label": "Open DevHub",
+              "url": "http://127.0.0.1:3000"
+            },
+            {
+              "id": "docs",
+              "type": "docs",
+              "label": "Installation guide",
+              "url": "https://docs.example.test/devhub/install"
+            },
+            {
+              "id": "repository",
+              "type": "repository",
+              "label": "Source repository",
+              "url": "https://github.com/example/devhub"
+            }
+          ],
+          "probe": {
+            "type": "http",
+            "url": "http://127.0.0.1:3000",
+            "successStatuses": [
+              200
+            ],
+            "timeoutMs": 3000
+          },
+          "commands": {
+            "verify": "npm test"
+          }
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "id": "example-app",
+      "title": "Example App",
+      "registration": "native",
+      "aliases": [
+        "Demo application"
+      ],
+      "description": "Fictional application showing local and managed services.",
+      "lifecycle": "active",
+      "kind": "product",
+      "repository": "example/example-app",
+      "tags": [
+        "demo",
+        "web"
+      ],
+      "workspaces": [
+        {
+          "host": "developer-laptop",
+          "path": "/workspace/example-app"
+        }
+      ],
+      "services": [
+        {
+          "id": "local-console",
+          "name": "Local console",
+          "kind": "admin",
+          "environment": "local",
+          "host": "developer-laptop",
+          "runtime": "node",
+          "mode": "on-demand",
+          "visibility": "local",
+          "url": "http://127.0.0.1:3000",
+          "links": [
+            {
+              "id": "primary",
+              "type": "primary",
+              "label": "Open local console",
+              "url": "http://127.0.0.1:3000"
+            },
+            {
+              "id": "docs",
+              "type": "docs",
+              "label": "Local console guide",
+              "url": "https://docs.example.test/example-app/local-console"
+            }
+          ],
+          "probe": {
+            "type": "http",
+            "url": "http://127.0.0.1:3000/health",
+            "successStatuses": [
+              200
+            ],
+            "timeoutMs": 3000
+          },
+          "reported": {
+            "state": "stopped",
+            "note": "Start this fictional service only when the demo needs it."
+          },
+          "commands": {
+            "start": "npm run dev",
+            "logs": "npm run logs"
+          }
+        },
+        {
+          "id": "production-api",
+          "name": "Production API",
+          "kind": "api",
+          "environment": "production",
+          "host": "managed-cloud",
+          "runtime": "managed",
+          "mode": "managed",
+          "visibility": "authenticated",
+          "url": "https://api.example.test",
+          "endpoint": {
+            "fallback": "https://managed-cloud.example.test/example-app"
+          },
+          "links": [
+            {
+              "id": "primary",
+              "type": "primary",
+              "label": "Open production API",
+              "url": "https://api.example.test"
+            },
+            {
+              "id": "docs",
+              "type": "docs",
+              "label": "API documentation",
+              "url": "https://docs.example.test/example-app/api"
+            },
+            {
+              "id": "logs",
+              "type": "logs",
+              "label": "View managed logs",
+              "url": "https://logs.example.test/example-app"
+            }
+          ],
+          "reported": {
+            "state": "registered",
+            "note": "Documentation-only endpoint reserved by example.test."
+          },
+          "readiness": {
+            "profile": "customer-facing",
+            "evidence": [
+              {
+                "id": "monitoring-review",
+                "check": "monitoring",
+                "state": "declared",
+                "source": "operator",
+                "note": "The fictional managed provider is declared as the monitoring owner; no live integration is connected.",
+                "observedAt": "2026-08-13T00:00:00Z"
+              },
+              {
+                "id": "restore-review",
+                "check": "restore",
+                "state": "unknown",
+                "source": "catalog",
+                "note": "No reviewed restore exercise is registered for this fictional API."
+              },
+              {
+                "id": "cost-boundary",
+                "check": "cost",
+                "state": "declared",
+                "source": "operator",
+                "note": "Billing belongs to the fictional managed provider account.",
+                "url": "https://billing.example.test/example-app"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,322 @@
+const idPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const projectFields = new Set([
+  "version", "id", "title", "registration", "aliases", "description", "lifecycle",
+  "kind", "repository", "tags", "workspaces", "services",
+]);
+const hostFields = new Set(["id", "name", "kind", "location", "tailscaleName", "tailscaleIPv4"]);
+const serviceFields = new Set([
+  "id", "name", "kind", "environment", "host", "runtime", "mode", "visibility",
+  "description", "url", "endpoint", "links", "probe", "reported", "commands",
+  "readiness",
+]);
+const serviceEndpointFields = new Set(["canonical", "fallback"]);
+const readinessFields = new Set(["profile", "evidence"]);
+const readinessEvidenceFields = new Set(["id", "check", "state", "source", "note", "observedAt", "validUntil", "url"]);
+const serviceLinkFields = new Set(["id", "type", "label", "url"]);
+const probeFields = new Set(["type", "url", "successStatuses", "timeoutMs"]);
+const reportFields = new Set(["state", "observedAt", "note"]);
+const commandFields = new Set(["start", "stop", "restart", "logs", "verify", "deploy"]);
+const workspaceFields = new Set(["host", "path"]);
+const lifecycles = new Set(["discovery", "active", "production", "paused", "archived"]);
+const registrations = new Set(["native", "overlay"]);
+const visibilities = new Set(["public", "authenticated", "tailnet", "local", "internal"]);
+const modes = new Set(["always-on", "on-demand", "managed", "internal"]);
+const serviceLinkTypes = new Set(["primary", "dashboard", "docs", "repository", "logs", "console"]);
+const readinessProfiles = new Set(["personal", "internal", "customer-facing", "sensitive"]);
+const readinessChecks = new Set(["monitoring", "alerting", "backup", "restore", "rollback", "security-review", "privacy", "ownership", "cost", "deployment"]);
+const readinessStates = new Set(["verified", "declared", "missing", "not-applicable", "unknown"]);
+const readinessSources = new Set(["operator", "agent", "integration", "catalog"]);
+const hostKinds = new Set(["mac", "linux", "cloud"]);
+const hostLocations = new Set(["local", "remote", "cloud"]);
+const observedStates = new Set(["up", "down", "stopped", "degraded", "registered", "unknown"]);
+const sensitiveNamePattern = /^(?:api[-_]?key|access[-_]?token|auth(?:orization)?|client[-_]?secret|password|passwd|secret|signature|token)$/i;
+const secretAssignmentPattern = /\b(?:api[-_]?key|access[-_]?token|client[-_]?secret|password|passwd|secret|token)\s*[:=]\s*["']?(?!\$|\$\{|<|example\b|redacted\b)[A-Za-z0-9_./+=-]{8,}/i;
+
+export class CatalogValidationError extends Error {
+  constructor(source, fieldPath, message) {
+    super(`${source}: ${fieldPath}: ${message}`);
+    this.name = "CatalogValidationError";
+    this.source = source;
+    this.fieldPath = fieldPath;
+  }
+}
+
+function fail(source, fieldPath, message) {
+  throw new CatalogValidationError(source, fieldPath, message);
+}
+
+function requireObject(value, source, fieldPath) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) fail(source, fieldPath, "must be an object");
+}
+
+function requireArray(value, source, fieldPath) {
+  if (!Array.isArray(value)) fail(source, fieldPath, "must be an array");
+}
+
+function requireString(value, source, fieldPath) {
+  if (typeof value !== "string" || value.trim() === "") fail(source, fieldPath, "must be a non-empty string");
+}
+
+function requireId(value, source, fieldPath) {
+  requireString(value, source, fieldPath);
+  if (!idPattern.test(value)) fail(source, fieldPath, "must use lowercase kebab-case");
+}
+
+function rejectUnknownFields(value, allowed, source, fieldPath) {
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) fail(source, `${fieldPath}.${key}`, "is not a supported field");
+  }
+}
+
+function requireEnum(value, allowed, source, fieldPath) {
+  if (!allowed.has(value)) fail(source, fieldPath, `must be one of: ${[...allowed].join(", ")}`);
+}
+
+function requireHttpUrl(value, source, fieldPath) {
+  requireString(value, source, fieldPath);
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    fail(source, fieldPath, "must be a valid absolute URL");
+  }
+  if (!new Set(["http:", "https:"]).has(parsed.protocol)) fail(source, fieldPath, "must use http or https");
+  if (parsed.username || parsed.password) fail(source, fieldPath, "must not contain URL credentials");
+  for (const key of parsed.searchParams.keys()) {
+    if (sensitiveNamePattern.test(key)) fail(source, fieldPath, `must not contain secret-bearing query parameter ${key}`);
+  }
+}
+
+function validateCommand(command, source, fieldPath) {
+  requireString(command, source, fieldPath);
+  if (/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/.test(command)) {
+    fail(source, fieldPath, "must not contain private key material");
+  }
+  if (/https?:\/\/[^/\s:@]+:[^@\s]+@/i.test(command)) {
+    fail(source, fieldPath, "must not contain URL credentials");
+  }
+  const query = command.match(/https?:\/\/[^\s"']+/gi) ?? [];
+  for (const candidate of query) {
+    let parsed;
+    try {
+      parsed = new URL(candidate);
+    } catch {
+      // Command fragments are not required to be standalone URLs.
+      continue;
+    }
+    for (const key of parsed.searchParams.keys()) {
+      if (sensitiveNamePattern.test(key)) fail(source, fieldPath, `must not contain secret-bearing query parameter ${key}`);
+    }
+  }
+  if (secretAssignmentPattern.test(command)) {
+    fail(source, fieldPath, "must not contain an inline secret assignment");
+  }
+}
+
+function validateTailscaleIPv4(value, source, fieldPath) {
+  requireString(value, source, fieldPath);
+  const octets = value.split(".").map(Number);
+  if (octets.length !== 4 || octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) {
+    fail(source, fieldPath, "must be a valid IPv4 address");
+  }
+  if (octets[0] !== 100 || octets[1] < 64 || octets[1] > 127) {
+    fail(source, fieldPath, "must be inside the Tailscale CGNAT address range");
+  }
+}
+
+function validateProbe(probe, source, fieldPath) {
+  requireObject(probe, source, fieldPath);
+  rejectUnknownFields(probe, probeFields, source, fieldPath);
+  if (probe.type !== "http") fail(source, `${fieldPath}.type`, "must be http");
+  requireHttpUrl(probe.url, source, `${fieldPath}.url`);
+  requireArray(probe.successStatuses, source, `${fieldPath}.successStatuses`);
+  if (probe.successStatuses.length === 0) fail(source, `${fieldPath}.successStatuses`, "must not be empty");
+  const seen = new Set();
+  for (const [index, status] of probe.successStatuses.entries()) {
+    if (!Number.isInteger(status) || status < 100 || status > 599) {
+      fail(source, `${fieldPath}.successStatuses[${index}]`, "must be an integer from 100 to 599");
+    }
+    if (seen.has(status)) fail(source, `${fieldPath}.successStatuses[${index}]`, `duplicates status ${status}`);
+    seen.add(status);
+  }
+  if (probe.timeoutMs !== undefined && (!Number.isInteger(probe.timeoutMs) || probe.timeoutMs < 100 || probe.timeoutMs > 60000)) {
+    fail(source, `${fieldPath}.timeoutMs`, "must be an integer from 100 to 60000");
+  }
+}
+
+function validateReported(reported, source, fieldPath) {
+  requireObject(reported, source, fieldPath);
+  rejectUnknownFields(reported, reportFields, source, fieldPath);
+  requireEnum(reported.state, observedStates, source, `${fieldPath}.state`);
+  if (reported.observedAt !== undefined) {
+    requireString(reported.observedAt, source, `${fieldPath}.observedAt`);
+    if (!Number.isFinite(Date.parse(reported.observedAt)) || !/T/.test(reported.observedAt)) {
+      fail(source, `${fieldPath}.observedAt`, "must be an ISO 8601 date-time");
+    }
+  }
+  if (reported.note !== undefined) requireString(reported.note, source, `${fieldPath}.note`);
+}
+
+function validateCommands(commands, source, fieldPath) {
+  requireObject(commands, source, fieldPath);
+  rejectUnknownFields(commands, commandFields, source, fieldPath);
+  for (const [name, command] of Object.entries(commands)) validateCommand(command, source, `${fieldPath}.${name}`);
+}
+
+function validateServiceLinks(links, source, fieldPath) {
+  requireArray(links, source, fieldPath);
+  if (links.length > 50) fail(source, fieldPath, "must contain at most 50 links");
+  const linkIds = new Set();
+  for (const [index, link] of links.entries()) {
+    const linkPath = `${fieldPath}[${index}]`;
+    requireObject(link, source, linkPath);
+    rejectUnknownFields(link, serviceLinkFields, source, linkPath);
+    requireId(link.id, source, `${linkPath}.id`);
+    if (linkIds.has(link.id)) fail(source, `${linkPath}.id`, `duplicates link ${link.id}`);
+    linkIds.add(link.id);
+    requireEnum(link.type, serviceLinkTypes, source, `${linkPath}.type`);
+    requireString(link.label, source, `${linkPath}.label`);
+    requireHttpUrl(link.url, source, `${linkPath}.url`);
+  }
+}
+
+function validateServiceEndpoint(endpoint, source, fieldPath) {
+  requireObject(endpoint, source, fieldPath);
+  rejectUnknownFields(endpoint, serviceEndpointFields, source, fieldPath);
+  if (endpoint.canonical !== undefined) requireHttpUrl(endpoint.canonical, source, `${fieldPath}.canonical`);
+  if (endpoint.fallback === undefined) fail(source, `${fieldPath}.fallback`, "is required");
+  requireHttpUrl(endpoint.fallback, source, `${fieldPath}.fallback`);
+  if (endpoint.canonical === endpoint.fallback) {
+    fail(source, fieldPath, "canonical and fallback must be different URLs");
+  }
+}
+
+function validateDateTime(value, source, fieldPath) {
+  requireString(value, source, fieldPath);
+  if (!Number.isFinite(Date.parse(value)) || !/T/.test(value)) {
+    fail(source, fieldPath, "must be an ISO 8601 date-time");
+  }
+}
+
+function validateReadiness(readiness, source, fieldPath) {
+  requireObject(readiness, source, fieldPath);
+  rejectUnknownFields(readiness, readinessFields, source, fieldPath);
+  requireEnum(readiness.profile, readinessProfiles, source, `${fieldPath}.profile`);
+  requireArray(readiness.evidence, source, `${fieldPath}.evidence`);
+  if (readiness.evidence.length > 50) fail(source, `${fieldPath}.evidence`, "must contain at most 50 items");
+  const evidenceIds = new Set();
+  for (const [index, evidence] of readiness.evidence.entries()) {
+    const evidencePath = `${fieldPath}.evidence[${index}]`;
+    requireObject(evidence, source, evidencePath);
+    rejectUnknownFields(evidence, readinessEvidenceFields, source, evidencePath);
+    requireId(evidence.id, source, `${evidencePath}.id`);
+    if (evidenceIds.has(evidence.id)) fail(source, `${evidencePath}.id`, `duplicates evidence ${evidence.id}`);
+    evidenceIds.add(evidence.id);
+    requireEnum(evidence.check, readinessChecks, source, `${evidencePath}.check`);
+    requireEnum(evidence.state, readinessStates, source, `${evidencePath}.state`);
+    requireEnum(evidence.source, readinessSources, source, `${evidencePath}.source`);
+    requireString(evidence.note, source, `${evidencePath}.note`);
+    if (secretAssignmentPattern.test(evidence.note)) fail(source, `${evidencePath}.note`, "must not contain an inline secret assignment");
+    if (evidence.observedAt !== undefined) validateDateTime(evidence.observedAt, source, `${evidencePath}.observedAt`);
+    if (evidence.validUntil !== undefined) validateDateTime(evidence.validUntil, source, `${evidencePath}.validUntil`);
+    if (evidence.observedAt !== undefined && evidence.validUntil !== undefined && Date.parse(evidence.validUntil) < Date.parse(evidence.observedAt)) {
+      fail(source, `${evidencePath}.validUntil`, "must not be earlier than observedAt");
+    }
+    if (evidence.url !== undefined) requireHttpUrl(evidence.url, source, `${evidencePath}.url`);
+  }
+}
+
+export function validateHostsDocument(document, source = "hosts.yaml") {
+  requireObject(document, source, "$root");
+  rejectUnknownFields(document, new Set(["version", "hosts"]), source, "$root");
+  if (document.version !== 1) fail(source, "version", "must be 1");
+  requireArray(document.hosts, source, "hosts");
+  if (document.hosts.length === 0) fail(source, "hosts", "must not be empty");
+
+  const hostIds = new Set();
+  const tailscaleAddresses = new Set();
+  for (const [index, host] of document.hosts.entries()) {
+    const fieldPath = `hosts[${index}]`;
+    requireObject(host, source, fieldPath);
+    rejectUnknownFields(host, hostFields, source, fieldPath);
+    requireId(host.id, source, `${fieldPath}.id`);
+    if (hostIds.has(host.id)) fail(source, `${fieldPath}.id`, `duplicates host ${host.id}`);
+    hostIds.add(host.id);
+    requireString(host.name, source, `${fieldPath}.name`);
+    requireEnum(host.kind, hostKinds, source, `${fieldPath}.kind`);
+    requireEnum(host.location, hostLocations, source, `${fieldPath}.location`);
+    if (host.tailscaleName !== undefined) requireString(host.tailscaleName, source, `${fieldPath}.tailscaleName`);
+    if (host.tailscaleIPv4 !== undefined) {
+      validateTailscaleIPv4(host.tailscaleIPv4, source, `${fieldPath}.tailscaleIPv4`);
+      if (tailscaleAddresses.has(host.tailscaleIPv4)) fail(source, `${fieldPath}.tailscaleIPv4`, `duplicates address ${host.tailscaleIPv4}`);
+      tailscaleAddresses.add(host.tailscaleIPv4);
+    }
+  }
+  return { hostIds };
+}
+
+export function validateProjectDocument(project, { source = "project.yaml", hostIds, expectedId } = {}) {
+  requireObject(project, source, "$root");
+  rejectUnknownFields(project, projectFields, source, "$root");
+  if (project.version !== 1) fail(source, "version", "must be 1");
+  requireId(project.id, source, "id");
+  if (expectedId && project.id !== expectedId) fail(source, "id", `must match filename ${expectedId}.yaml`);
+  requireString(project.title, source, "title");
+  requireEnum(project.registration, registrations, source, "registration");
+  requireString(project.description, source, "description");
+  requireEnum(project.lifecycle, lifecycles, source, "lifecycle");
+  requireString(project.kind, source, "kind");
+  if (project.repository !== undefined) {
+    requireString(project.repository, source, "repository");
+    if (!/^[^/\s]+\/[^/\s]+$/.test(project.repository)) fail(source, "repository", "must use owner/repository form");
+  }
+  for (const field of ["aliases", "tags"]) {
+    if (project[field] !== undefined) {
+      requireArray(project[field], source, field);
+      const seen = new Set();
+      for (const [index, value] of project[field].entries()) {
+        if (field === "tags") requireId(value, source, `${field}[${index}]`);
+        else requireString(value, source, `${field}[${index}]`);
+        if (seen.has(value)) fail(source, `${field}[${index}]`, `duplicates ${JSON.stringify(value)}`);
+        seen.add(value);
+      }
+    }
+  }
+
+  if (project.workspaces !== undefined) {
+    requireArray(project.workspaces, source, "workspaces");
+    for (const [index, workspace] of project.workspaces.entries()) {
+      const fieldPath = `workspaces[${index}]`;
+      requireObject(workspace, source, fieldPath);
+      rejectUnknownFields(workspace, workspaceFields, source, fieldPath);
+      requireId(workspace.host, source, `${fieldPath}.host`);
+      if (hostIds && !hostIds.has(workspace.host)) fail(source, `${fieldPath}.host`, `references unknown host ${workspace.host}`);
+      requireString(workspace.path, source, `${fieldPath}.path`);
+    }
+  }
+
+  requireArray(project.services, source, "services");
+  const serviceIds = new Set();
+  for (const [index, service] of project.services.entries()) {
+    const fieldPath = `services[${index}]`;
+    requireObject(service, source, fieldPath);
+    rejectUnknownFields(service, serviceFields, source, fieldPath);
+    requireId(service.id, source, `${fieldPath}.id`);
+    if (serviceIds.has(service.id)) fail(source, `${fieldPath}.id`, `duplicates service ${service.id}`);
+    serviceIds.add(service.id);
+    for (const field of ["name", "kind", "environment", "runtime"]) requireString(service[field], source, `${fieldPath}.${field}`);
+    requireId(service.host, source, `${fieldPath}.host`);
+    if (hostIds && !hostIds.has(service.host)) fail(source, `${fieldPath}.host`, `references unknown host ${service.host}`);
+    requireEnum(service.mode, modes, source, `${fieldPath}.mode`);
+    requireEnum(service.visibility, visibilities, source, `${fieldPath}.visibility`);
+    if (service.description !== undefined) requireString(service.description, source, `${fieldPath}.description`);
+    if (service.url !== undefined) requireHttpUrl(service.url, source, `${fieldPath}.url`);
+    if (service.endpoint !== undefined) validateServiceEndpoint(service.endpoint, source, `${fieldPath}.endpoint`);
+    if (service.readiness !== undefined) validateReadiness(service.readiness, source, `${fieldPath}.readiness`);
+    if (service.links !== undefined) validateServiceLinks(service.links, source, `${fieldPath}.links`);
+    if (service.probe !== undefined) validateProbe(service.probe, source, `${fieldPath}.probe`);
+    if (service.reported !== undefined) validateReported(service.reported, source, `${fieldPath}.reported`);
+    if (service.commands !== undefined) validateCommands(service.commands, source, `${fieldPath}.commands`);
+  }
+  return project;
+}

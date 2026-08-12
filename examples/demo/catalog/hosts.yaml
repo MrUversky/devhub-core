@@ -1,0 +1,16 @@
+version: 1
+hosts:
+  - id: developer-laptop
+    name: Developer laptop
+    kind: mac
+    location: local
+
+  - id: devhub-server
+    name: DevHub server
+    kind: linux
+    location: remote
+
+  - id: managed-cloud
+    name: Managed cloud
+    kind: cloud
+    location: cloud

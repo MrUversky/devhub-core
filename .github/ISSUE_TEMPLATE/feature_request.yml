@@ -1,0 +1,44 @@
+name: Feature request
+description: Propose a focused improvement to DevHub
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Explain the operational problem before proposing an implementation.
+        Large schema, authentication or control-plane changes should begin as a
+        design discussion. Use only fictional infrastructure examples.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What cannot be understood or maintained safely today?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Security and privacy boundaries
+      description: What must remain read-only, private or explicitly reviewed?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: The request does not require arbitrary command execution from the dashboard or MCP.
+          required: true
+        - label: The examples contain no real private infrastructure metadata or secrets.
+          required: true

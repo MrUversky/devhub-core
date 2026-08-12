@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+: "${DEVHUB_ROOT:?DEVHUB_ROOT is required}"
+: "${DEVHUB_BIND_ADDRESS:?DEVHUB_BIND_ADDRESS is required}"
+: "${DEVHUB_PORT:?DEVHUB_PORT is required}"
+
+case "$DEVHUB_ROOT" in
+  /*) ;;
+  *) echo "DEVHUB_ROOT must be an absolute path" >&2; exit 64 ;;
+esac
+case "$DEVHUB_ROOT" in
+  /|/bin|/boot|/dev|/etc|/home|/opt|/root|/run|/srv|/usr|/var)
+    echo "DEVHUB_ROOT is too broad: $DEVHUB_ROOT" >&2
+    exit 64
+    ;;
+esac
+[[ "$DEVHUB_PORT" =~ ^[0-9]+$ ]] && (( DEVHUB_PORT >= 1 && DEVHUB_PORT <= 65535 )) || {
+  echo "DEVHUB_PORT must be between 1 and 65535" >&2
+  exit 64
+}
+
+DEVHUB_CURRENT="$DEVHUB_ROOT/current"
+[[ -d "$DEVHUB_CURRENT" && -f "$DEVHUB_CURRENT/package.json" ]] || {
+  echo "No installed DevHub release at $DEVHUB_CURRENT; run devhub-portable-update first" >&2
+  exit 69
+}
+[[ -x "$DEVHUB_CURRENT/node_modules/.bin/vinext" ]] || {
+  echo "Installed release is incomplete: vinext is missing" >&2
+  exit 69
+}
+
+cd "$DEVHUB_CURRENT"
+exec ./node_modules/.bin/vinext start --hostname "$DEVHUB_BIND_ADDRESS" --port "$DEVHUB_PORT"

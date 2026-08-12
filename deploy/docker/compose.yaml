@@ -1,0 +1,33 @@
+name: devhub
+
+services:
+  devhub:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    environment:
+      DEVHUB_HOST_ID: "${DEVHUB_HOST_ID:-devhub-server}"
+      DEVHUB_MCP_AUTH_MODE: "${DEVHUB_MCP_AUTH_MODE:-network}"
+      DEVHUB_MCP_TOKEN: "${DEVHUB_MCP_TOKEN:-}"
+    ports:
+      - "${DEVHUB_BIND_ADDRESS:-127.0.0.1}:${DEVHUB_PORT:-3000}:3000"
+    user: "10001:10001"
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - /usr/local/libexec/devhub-healthcheck.mjs
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3

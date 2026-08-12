@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Linux (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run devhub -- validate --check
+      - run: npm run lint
+      - run: npm test
+      - run: npm audit --omit=dev --audit-level=high
+
+  macos-cli:
+    name: CLI smoke (macOS, Node 22)
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run devhub -- validate --check
+      - run: npm run devhub -- doctor --json
+      - run: npm audit --omit=dev --audit-level=high
+
+  release-evidence:
+    name: Deterministic checksums and SBOM
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Create manifest-only release source
+        run: |
+          mkdir "$RUNNER_TEMP/devhub-source"
+          git archive HEAD | tar -x -C "$RUNNER_TEMP/devhub-source"
+      - name: Build and verify release evidence
+        working-directory: ${{ runner.temp }}/devhub-source
+        run: |
+          npm run artifact:verify
+          npm audit --omit=dev --audit-level=high
+          npm run release:evidence -- --output "$RUNNER_TEMP/release-evidence-one"
+          npm run release:evidence -- --output "$RUNNER_TEMP/release-evidence-two"
+          npm run release:verify -- "$RUNNER_TEMP/release-evidence-one"
+          diff --recursive --brief "$RUNNER_TEMP/release-evidence-one" "$RUNNER_TEMP/release-evidence-two"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: devhub-release-evidence
+          path: ${{ runner.temp }}/release-evidence-one
+          if-no-files-found: error

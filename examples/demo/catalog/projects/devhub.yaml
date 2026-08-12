@@ -1,0 +1,40 @@
+version: 1
+id: devhub
+title: DevHub
+registration: native
+aliases: [Service registry]
+description: Self-hosted operational map running with a fictional demo catalog.
+lifecycle: active
+kind: platform
+repository: example/devhub
+tags: [demo, registry]
+services:
+  - id: dashboard
+    name: Dashboard and MCP
+    kind: admin
+    environment: self-hosted
+    host: devhub-server
+    runtime: node
+    mode: always-on
+    visibility: local
+    url: http://127.0.0.1:3000
+    links:
+      - id: primary
+        type: primary
+        label: Open DevHub
+        url: http://127.0.0.1:3000
+      - id: docs
+        type: docs
+        label: Installation guide
+        url: https://docs.example.test/devhub/install
+      - id: repository
+        type: repository
+        label: Source repository
+        url: https://github.com/example/devhub
+    probe:
+      type: http
+      url: http://127.0.0.1:3000
+      successStatuses: [200]
+      timeoutMs: 3000
+    commands:
+      verify: npm test

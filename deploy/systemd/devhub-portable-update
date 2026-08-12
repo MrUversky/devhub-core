@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DEVHUB_CONFIG="${1:-/etc/devhub/devhub.env}"
+[[ -f "$DEVHUB_CONFIG" && ! -L "$DEVHUB_CONFIG" && -r "$DEVHUB_CONFIG" ]] || {
+  echo "Config must be a readable regular file, not a symbolic link: $DEVHUB_CONFIG" >&2
+  exit 66
+}
+
+set -a
+# The root-owned configuration is deliberately shell-compatible so the same
+# values can be consumed by systemd and this explicit update command.
+# shellcheck disable=SC1090
+source "$DEVHUB_CONFIG"
+set +a
+
+: "${DEVHUB_REPOSITORY_URL:?DEVHUB_REPOSITORY_URL is required}"
+: "${DEVHUB_BRANCH:?DEVHUB_BRANCH is required}"
+: "${DEVHUB_ROOT:?DEVHUB_ROOT is required}"
+
+case "$DEVHUB_ROOT" in
+  /*) ;;
+  *) echo "DEVHUB_ROOT must be an absolute path" >&2; exit 64 ;;
+esac
+case "$DEVHUB_ROOT" in
+  /|/bin|/boot|/dev|/etc|/home|/opt|/root|/run|/srv|/usr|/var)
+    echo "DEVHUB_ROOT is too broad: $DEVHUB_ROOT" >&2
+    exit 64
+    ;;
+esac
+git check-ref-format --branch "$DEVHUB_BRANCH" >/dev/null
+
+DEVHUB_REPOSITORY="$DEVHUB_ROOT/repository.git"
+DEVHUB_RELEASES="$DEVHUB_ROOT/releases"
+DEVHUB_CURRENT="$DEVHUB_ROOT/current"
+mkdir -p "$DEVHUB_RELEASES"
+
+if [[ ! -d "$DEVHUB_REPOSITORY" ]]; then
+  git clone --bare --filter=blob:none "$DEVHUB_REPOSITORY_URL" "$DEVHUB_REPOSITORY"
+else
+  [[ "$(git -C "$DEVHUB_REPOSITORY" remote get-url origin)" == "$DEVHUB_REPOSITORY_URL" ]] || {
+    echo "Configured repository does not match the existing origin" >&2
+    exit 65
+  }
+fi
+
+git -C "$DEVHUB_REPOSITORY" fetch --quiet --prune origin \
+  "+refs/heads/$DEVHUB_BRANCH:refs/remotes/origin/$DEVHUB_BRANCH"
+DEVHUB_SHA="$(git -C "$DEVHUB_REPOSITORY" rev-parse "refs/remotes/origin/$DEVHUB_BRANCH^{commit}")"
+[[ "$DEVHUB_SHA" =~ ^[0-9a-f]{40,64}$ ]]
+DEVHUB_RELEASE="$DEVHUB_RELEASES/$DEVHUB_SHA"
+
+DEVHUB_BUILD_DIR=""
+cleanup() {
+  if [[ -n "$DEVHUB_BUILD_DIR" && -d "$DEVHUB_BUILD_DIR" ]]; then
+    case "$DEVHUB_BUILD_DIR" in
+      "$DEVHUB_RELEASES"/.build.*) rm -rf -- "$DEVHUB_BUILD_DIR" ;;
+      *) echo "Refusing to clean unexpected build path: $DEVHUB_BUILD_DIR" >&2 ;;
+    esac
+  fi
+}
+trap cleanup EXIT
+
+if [[ ! -d "$DEVHUB_RELEASE" ]]; then
+  DEVHUB_BUILD_DIR="$(mktemp -d "$DEVHUB_RELEASES/.build.${DEVHUB_SHA:0:12}.XXXXXX")"
+  git -C "$DEVHUB_REPOSITORY" archive "$DEVHUB_SHA" | tar -xf - -C "$DEVHUB_BUILD_DIR"
+  (
+    cd "$DEVHUB_BUILD_DIR"
+    npm ci
+    npm run devhub -- validate --check
+    npm run lint
+    npm test
+    npm audit --omit=dev --audit-level=high
+  )
+  mv "$DEVHUB_BUILD_DIR" "$DEVHUB_RELEASE"
+  DEVHUB_BUILD_DIR=""
+fi
+
+DEVHUB_NEXT_LINK="$DEVHUB_ROOT/.current.$DEVHUB_SHA.$$"
+ln -s "$DEVHUB_RELEASE" "$DEVHUB_NEXT_LINK"
+mv -Tf "$DEVHUB_NEXT_LINK" "$DEVHUB_CURRENT"
+printf 'Installed DevHub %s from %s@%s\n' "$DEVHUB_SHA" "$DEVHUB_REPOSITORY_URL" "$DEVHUB_BRANCH"

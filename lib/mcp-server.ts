@@ -1,0 +1,229 @@
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { z } from "zod";
+import packageMetadata from "../package.json" with { type: "json" };
+import {
+  getProject,
+  getRunbook,
+  getService,
+  getStatus,
+  listProjects,
+  planReconciliation,
+  searchProjects,
+} from "@/lib/mcp-tools";
+
+const id = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).describe("Stable kebab-case catalog ID");
+const readOnlyAnnotations = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+} as const;
+
+const serviceLinkSchema = z.object({
+  id,
+  type: z.enum(["primary", "dashboard", "docs", "repository", "logs", "console"]),
+  label: z.string(),
+  url: z.string().url().regex(/^https?:\/\//),
+});
+
+const serviceEndpointSchema = z.object({
+  canonical: z.string().url().regex(/^https?:\/\//).optional(),
+  fallback: z.string().url().regex(/^https?:\/\//),
+});
+
+const selectedEndpointSchema = z.object({
+  url: z.string().url().regex(/^https?:\/\//),
+  source: z.enum(["canonical", "host-fallback", "primary-link", "legacy-url"]),
+  reason: z.string(),
+});
+
+const readinessEvidenceSchema = z.object({
+  id,
+  check: z.enum(["monitoring", "alerting", "backup", "restore", "rollback", "security-review", "privacy", "ownership", "cost", "deployment"]),
+  state: z.enum(["verified", "declared", "missing", "not-applicable", "unknown"]),
+  source: z.enum(["operator", "agent", "integration", "catalog"]),
+  note: z.string(),
+  observedAt: z.string().optional(),
+  validUntil: z.string().optional(),
+  url: z.string().url().regex(/^https?:\/\//).optional(),
+});
+
+const readinessSchema = z.object({
+  profile: z.enum(["personal", "internal", "customer-facing", "sensitive"]),
+  evidence: z.array(readinessEvidenceSchema),
+});
+
+const serviceSummarySchema = z.object({
+  id,
+  name: z.string(),
+  kind: z.string(),
+  environment: z.string(),
+  host: id,
+  runtime: z.string(),
+  mode: z.enum(["always-on", "on-demand", "managed", "internal"]),
+  visibility: z.enum(["public", "authenticated", "tailnet", "local", "internal"]),
+  url: z.string().nullable(),
+  endpoint: serviceEndpointSchema.nullable(),
+  selectedEndpoint: selectedEndpointSchema.nullable(),
+  readiness: readinessSchema.nullable(),
+  links: z.array(serviceLinkSchema),
+  hasProbe: z.boolean(),
+  hasRunbook: z.boolean(),
+});
+
+const projectSummarySchema = z.object({
+  id,
+  title: z.string(),
+  description: z.string(),
+  lifecycle: z.enum(["discovery", "active", "production", "paused", "archived"]),
+  kind: z.string(),
+  registration: z.enum(["native", "overlay"]),
+  repository: z.string().nullable(),
+  tags: z.array(z.string()),
+  services: z.array(serviceSummarySchema),
+});
+
+const statusSchema = z.object({
+  key: z.string(),
+  state: z.enum(["up", "down", "stopped", "degraded", "registered", "unknown", "protected"]),
+  source: z.enum(["probe", "reported", "catalog"]),
+  reason: z.enum(["live-probe", "reported", "catalog-only", "remote-loopback", "probe-timeout", "probe-failed"]),
+  checkedAt: z.string(),
+  observedAt: z.string().optional(),
+  latencyMs: z.number().optional(),
+  httpStatus: z.number().optional(),
+  note: z.string().optional(),
+});
+
+function result(value: unknown) {
+  return {
+    content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
+    structuredContent: value as Record<string, unknown>,
+  };
+}
+
+export function createDevHubMcpServer() {
+  const server = new McpServer(
+    { name: "devhub", version: packageMetadata.version },
+    {
+      instructions:
+        "DevHub is a self-hosted read-only service registry. Search before selecting a project or service. Treat live probes, reported state, and catalog-only state as different evidence, including freshness. Runbook commands are copy-only guidance and were not executed. This server cannot mutate manifests, run commands, or probe caller-supplied URLs; propose catalog changes through a reviewed Git diff.",
+    },
+  );
+
+  server.registerTool("list_projects", {
+    title: "List DevHub projects",
+    description: "List reviewed projects and service summaries from the configured DevHub catalog.",
+    inputSchema: z.object({}).strict(),
+    outputSchema: z.object({ projects: z.array(projectSummarySchema) }),
+    annotations: readOnlyAnnotations,
+  }, async () => result({ projects: listProjects() }));
+
+  server.registerTool("search_projects", {
+    title: "Search DevHub projects",
+    description: "Search reviewed project and service metadata. This never scans hosts, ports, or repositories.",
+    inputSchema: z.object({ query: z.string().trim().min(1).max(200) }).strict(),
+    outputSchema: z.object({ query: z.string(), projects: z.array(projectSummarySchema) }),
+    annotations: readOnlyAnnotations,
+  }, async ({ query }) => result({ query, projects: searchProjects(query) }));
+
+  server.registerTool("get_project", {
+    title: "Get a DevHub project",
+    description: "Get one reviewed project and its service summaries by stable project ID.",
+    inputSchema: z.object({ projectId: id }).strict(),
+    outputSchema: projectSummarySchema,
+    annotations: readOnlyAnnotations,
+  }, async ({ projectId }) => result(getProject(projectId)));
+
+  server.registerTool("get_service", {
+    title: "Get a DevHub service",
+    description: "Get reviewed metadata for one registered service. Commands are available only through get_runbook.",
+    inputSchema: z.object({ projectId: id, serviceId: id }).strict(),
+    outputSchema: z.object({
+      key: z.string(),
+      project: z.object({ id, title: z.string(), repository: z.string().nullable() }),
+      service: serviceSummarySchema.extend({ description: z.string().nullable() }),
+      host: z.object({
+        id,
+        name: z.string(),
+        kind: z.enum(["mac", "linux", "cloud"]),
+        location: z.enum(["local", "remote", "cloud"]),
+        tailscaleName: z.string().optional(),
+        tailscaleIPv4: z.string().optional(),
+      }).nullable(),
+    }),
+    annotations: readOnlyAnnotations,
+  }, async ({ projectId, serviceId }) => result(getService(projectId, serviceId)));
+
+  server.registerTool("get_runbook", {
+    title: "Get service runbook",
+    description: "Return reviewed copy-only operator commands for a service. This tool never executes commands.",
+    inputSchema: z.object({ projectId: id, serviceId: id }).strict(),
+    outputSchema: z.object({
+      key: z.string(),
+      host: id,
+      workspace: z.string().nullable(),
+      commands: z.record(z.string(), z.string()),
+      executionPolicy: z.literal("copy-only"),
+      note: z.string(),
+    }),
+    annotations: readOnlyAnnotations,
+  }, async ({ projectId, serviceId }) => result(getRunbook(projectId, serviceId)));
+
+  server.registerTool("get_status", {
+    title: "Get service status",
+    description: "Run only reviewed catalog health probes, optionally scoped to a project or service. Caller-provided URLs are not accepted.",
+    inputSchema: z.object({
+      projectId: id.optional(),
+      serviceId: id.optional(),
+    }).strict(),
+    outputSchema: z.object({ checkedAt: z.string(), statuses: z.array(statusSchema) }),
+    annotations: { ...readOnlyAnnotations, openWorldHint: true },
+  }, async ({ projectId, serviceId }) => result(await getStatus(projectId, serviceId)));
+
+  server.registerTool("plan_reconciliation", {
+    title: "Plan catalog reconciliation",
+    description: "Compare structured repository, workspace, host, and service-ID evidence with one reviewed record. Returns a review plan and never changes files.",
+    inputSchema: z.object({
+      projectId: id,
+      evidence: z.object({
+        repository: z.string().trim().min(1).max(300).optional(),
+        workspace: z.string().trim().min(1).max(1000).optional(),
+        runtimeHostId: id.optional(),
+        serviceIds: z.array(id).max(100).optional(),
+      }).strict(),
+    }).strict(),
+    outputSchema: z.object({
+      projectId: id,
+      readOnly: z.literal(true),
+      registration: z.enum(["native", "overlay"]),
+      evidenceAccepted: z.array(z.string()),
+      findings: z.array(z.object({
+        field: z.string(),
+        state: z.enum(["match", "mismatch"]),
+        catalog: z.unknown(),
+        evidence: z.unknown(),
+      })),
+      reviewRequired: z.boolean(),
+      guidance: z.string(),
+    }),
+    annotations: readOnlyAnnotations,
+  }, async ({ projectId, evidence }) => result(planReconciliation(projectId, evidence)));
+
+  return server;
+}
+
+export async function handleMcpRequest(request: Request) {
+  const transport = new WebStandardStreamableHTTPServerTransport({
+    sessionIdGenerator: undefined,
+    enableJsonResponse: true,
+  });
+  const server = createDevHubMcpServer();
+  await server.connect(transport);
+  const response = await transport.handleRequest(request);
+  const headers = new Headers(response.headers);
+  headers.set("cache-control", "private, no-store, max-age=0");
+  headers.set("x-content-type-options", "nosniff");
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
