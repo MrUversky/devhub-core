@@ -1,0 +1,43 @@
+{
+  "formatVersion": 1,
+  "checks": [
+    "monitoring",
+    "alerting",
+    "backup",
+    "restore",
+    "rollback",
+    "security-review",
+    "privacy",
+    "ownership",
+    "cost",
+    "deployment"
+  ],
+  "profiles": {
+    "personal": ["backup", "restore", "rollback", "ownership", "cost", "deployment"],
+    "internal": ["monitoring", "backup", "restore", "rollback", "ownership", "cost", "deployment"],
+    "customer-facing": [
+      "monitoring",
+      "alerting",
+      "backup",
+      "restore",
+      "rollback",
+      "security-review",
+      "privacy",
+      "ownership",
+      "cost",
+      "deployment"
+    ],
+    "sensitive": [
+      "monitoring",
+      "alerting",
+      "backup",
+      "restore",
+      "rollback",
+      "security-review",
+      "privacy",
+      "ownership",
+      "cost",
+      "deployment"
+    ]
+  }
+}

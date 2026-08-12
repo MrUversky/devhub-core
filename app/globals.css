@@ -497,6 +497,79 @@ a {
   text-transform: uppercase;
 }
 
+.portfolio-review {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.2fr) minmax(280px, 1fr) auto;
+  align-items: center;
+  gap: 22px;
+  margin: 0 0 24px;
+  padding: 18px 20px;
+  border: 1px solid #cad7b5;
+  border-radius: 13px;
+  background: linear-gradient(120deg, #f4f8e9, #fffdf8 70%);
+}
+
+.portfolio-review h3 {
+  margin: 4px 0 6px;
+  font-size: 16px;
+  letter-spacing: -0.03em;
+}
+
+.portfolio-review p:not(.eyebrow) {
+  max-width: 620px;
+  margin: 0;
+  color: #6a7772;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.portfolio-review dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+}
+
+.portfolio-review dl > div {
+  padding: 2px 14px;
+  border-left: 1px solid #d5dec6;
+}
+
+.portfolio-review dt {
+  color: #2d3f37;
+  font-size: 18px;
+  font-weight: 760;
+  letter-spacing: -0.04em;
+}
+
+.portfolio-review dd {
+  margin: 3px 0 0;
+  color: #728078;
+  font-size: 7px;
+  line-height: 1.35;
+}
+
+.portfolio-review > a {
+  padding: 9px 12px;
+  border-radius: 8px;
+  color: #fff;
+  background: #344b3f;
+  font-size: 8px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.portfolio-review > small {
+  grid-column: 2 / -1;
+  margin-top: -15px;
+  color: #859188;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 6px;
+  letter-spacing: 0.04em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
 .project-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1302,6 +1375,57 @@ pre {
   color: inherit;
 }
 
+.passport-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  border-bottom: 1px solid var(--line);
+  background: #fbfcf8;
+}
+
+.passport-facts > div {
+  min-width: 0;
+  padding: 10px 12px;
+  border-right: 1px solid var(--line);
+}
+
+.passport-facts > div:nth-child(4) { border-right: 0; }
+.passport-facts .passport-dependencies {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--line);
+  border-right: 0;
+}
+
+.passport-facts dt {
+  color: #83908b;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 7px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.passport-facts dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  color: #40504a;
+  font-size: 8px;
+  line-height: 1.4;
+  text-transform: capitalize;
+}
+
+.passport-next {
+  margin: 0;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  color: #586862;
+  background: #fff8e9;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.passport-next strong { color: #2d3e38; }
+
 .passport-evidence > :last-child {
   border-bottom: 0;
 }
@@ -1350,6 +1474,105 @@ pre {
 .passport-empty {
   padding: 15px 16px;
 }
+
+.recovery-card {
+  margin-top: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fffdf8;
+}
+
+.recovery-card > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  background: #eef4e1;
+}
+
+.recovery-card header small,
+.recovery-card header strong {
+  display: block;
+}
+
+.recovery-card header small,
+.recovery-card header > span {
+  color: #6d7d74;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 7px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.recovery-card header strong {
+  margin-top: 3px;
+  font-size: 12px;
+}
+
+.recovery-card dl {
+  margin: 0;
+}
+
+.recovery-card dl > div {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 12px;
+  padding: 11px 15px;
+  border-bottom: 1px solid var(--line);
+}
+
+.recovery-card dl > div:last-child {
+  border-bottom: 0;
+}
+
+.recovery-card dt {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: #566560;
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.recovery-card dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.recovery-card dd strong,
+.recovery-card dd small {
+  display: block;
+}
+
+.recovery-card dd strong {
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.recovery-card dd small {
+  margin-top: 4px;
+  color: #74817d;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.recovery-state {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #9aa29f;
+}
+
+.recovery-state-verified { background: #759d24; }
+.recovery-state-declared,
+.recovery-state-registered { background: #4f8b9f; }
+.recovery-state-missing { background: #bb5845; }
+.recovery-state-stale { background: #c58a26; }
+.recovery-state-not-applicable { background: #a9afac; }
 
 .panel-actions {
   display: grid;
@@ -1536,6 +1759,14 @@ pre {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .portfolio-review {
+    grid-template-columns: 1fr auto;
+  }
+
+  .portfolio-review dl { grid-column: 1; }
+  .portfolio-review > a { grid-column: 2; grid-row: 1 / span 2; }
+  .portfolio-review > small { grid-column: 1; margin-top: -12px; text-align: left; }
+
   .value-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1656,6 +1887,22 @@ pre {
     grid-template-columns: 1fr;
   }
 
+  .portfolio-review {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .portfolio-review dl,
+  .portfolio-review > a,
+  .portfolio-review > small {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .portfolio-review dl > div:first-child { border-left: 0; padding-left: 0; }
+  .portfolio-review > a { justify-self: start; }
+  .portfolio-review > small { margin-top: -10px; }
+
   .project-card {
     min-height: 0;
   }
@@ -1749,6 +1996,15 @@ pre {
   .service-facts > div {
     grid-template-columns: 92px 1fr;
   }
+
+  .recovery-card dl > div {
+    grid-template-columns: 106px minmax(0, 1fr);
+  }
+
+  .passport-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .passport-facts > div:nth-child(2) { border-right: 0; }
+  .passport-facts > div:nth-child(3),
+  .passport-facts > div:nth-child(4) { border-top: 1px solid var(--line); }
 }
 
 @media (prefers-reduced-motion: reduce) {

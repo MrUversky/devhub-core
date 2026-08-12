@@ -36,5 +36,25 @@ services:
       url: http://127.0.0.1:3000
       successStatuses: [200]
       timeoutMs: 3000
+    readiness:
+      profile: personal
+      owner: Self-hosting operator
+      dataClassification: internal
+      costModel: free
+      deployment:
+        source: catalog
+        provider: Self-hosted Node.js
+      dependencies: []
+      evidence:
+        - id: ownership-declared
+          check: ownership
+          state: declared
+          source: catalog
+          note: The self-hosting operator owns the catalog and deployment boundary.
+        - id: restore-unknown
+          check: restore
+          state: unknown
+          source: catalog
+          note: No isolated restore exercise has been recorded for this fictional installation.
     commands:
       verify: npm test

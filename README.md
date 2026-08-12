@@ -15,6 +15,11 @@ It keeps every service findable, explains how trustworthy its current state
 is, and leads to the safest useful next action. The catalog does not depend on
 a particular framework, process manager or hosting platform.
 
+Your coding agent may have shipped the service, but DevHub preserves the
+operating context: where it was deployed, what it depends on, who owns it, what
+it may cost, which safeguards have evidence and whether recovery has actually
+been reviewed.
+
 It keeps reviewed YAML manifests in Git, builds a lightweight read-only
 dashboard and exposes the same catalog through a read-only MCP endpoint. It
 does not scan random ports, execute shell commands or act as a process
@@ -32,6 +37,8 @@ supervisor.
 - Which reviewed runbook explains how to start, inspect or recover it?
 - Which monitoring, recovery, security, ownership and cost claims have fresh
   evidence, and which remain honestly unknown?
+- Which services across the portfolio need an evidence refresh or a recovery
+  decision first?
 
 The core promise is continuity: return to a project after weeks or months and
 recover its operational context in under 30 seconds. DevHub is not a metrics
@@ -75,12 +82,27 @@ npm run lint
 
 ## Add your catalog
 
-1. Replace the demo hosts in `catalog/hosts.yaml`.
-2. Add one project file per project under `catalog/projects/`.
-3. Never put passwords, tokens, private keys, cookies or secret-bearing URLs
+Start a separate catalog without editing or deleting the included demo:
+
+```bash
+npm run devhub -- init-catalog ./my-catalog \
+  --host-id developer-laptop \
+  --host-name "Developer laptop" \
+  --host-kind mac \
+  --host-location local
+```
+
+The default is a read-only plan showing every path. Review it, repeat with
+`--apply`, then use `DEVHUB_CATALOG_DIR="$PWD/my-catalog"` for catalog commands
+and the DevHub process. The initializer refuses non-empty destinations and
+validates the created `hosts.yaml` plus empty `projects/` starter immediately.
+
+1. Add one project file per project under `my-catalog/projects/`.
+2. Never put passwords, tokens, private keys, cookies or secret-bearing URLs
    in a manifest.
-4. Run `npm run devhub -- validate` to regenerate the reviewed runtime JSON.
-5. Commit the YAML and generated JSON together.
+3. Run `DEVHUB_CATALOG_DIR="$PWD/my-catalog" npm run devhub -- validate` to
+   regenerate the reviewed runtime JSON.
+4. Commit the YAML and generated JSON together.
 
 Use `registration: native` when a repository you control should own
 `.devhub/project.yaml`. Use `registration: overlay` when the metadata is
@@ -88,6 +110,7 @@ private or the source repository is shared or external.
 
 See [Installation](docs/INSTALLATION.md),
 [Configuration](docs/CONFIGURATION.md), [App Passport](docs/APP_PASSPORT.md),
+[Portfolio review](docs/PORTFOLIO_REVIEW.md),
 and [Privacy](docs/PRIVACY.md).
 
 Codex users can install the portable workflow skill and connect it to their

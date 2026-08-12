@@ -76,6 +76,33 @@
             ],
             "timeoutMs": 3000
           },
+          "readiness": {
+            "profile": "personal",
+            "owner": "Self-hosting operator",
+            "dataClassification": "internal",
+            "costModel": "free",
+            "deployment": {
+              "source": "catalog",
+              "provider": "Self-hosted Node.js"
+            },
+            "dependencies": [],
+            "evidence": [
+              {
+                "id": "ownership-declared",
+                "check": "ownership",
+                "state": "declared",
+                "source": "catalog",
+                "note": "The self-hosting operator owns the catalog and deployment boundary."
+              },
+              {
+                "id": "restore-unknown",
+                "check": "restore",
+                "state": "unknown",
+                "source": "catalog",
+                "note": "No isolated restore exercise has been recorded for this fictional installation."
+              }
+            ]
+          },
           "commands": {
             "verify": "npm test"
           }
@@ -185,6 +212,35 @@
           },
           "readiness": {
             "profile": "customer-facing",
+            "owner": "Example product owner",
+            "dataClassification": "personal",
+            "costModel": "metered",
+            "deployment": {
+              "source": "catalog",
+              "provider": "Example Cloud",
+              "revision": "demo-release-42",
+              "deployedAt": "2026-08-13T10:00:00Z",
+              "url": "https://deployments.example.test/example-app/demo-release-42"
+            },
+            "dependencies": [
+              {
+                "id": "primary-database",
+                "kind": "data-store",
+                "name": "Primary database",
+                "criticality": "required",
+                "provider": "Example Database",
+                "url": "https://console.example.test/example-app/database",
+                "note": "Stores fictional customer records for this demo."
+              },
+              {
+                "id": "email-api",
+                "kind": "external-api",
+                "name": "Transactional email API",
+                "criticality": "degraded",
+                "provider": "Example Mail",
+                "url": "https://status.example.test/mail"
+              }
+            ],
             "evidence": [
               {
                 "id": "monitoring-review",

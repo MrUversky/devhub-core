@@ -1,4 +1,5 @@
 import { catalog, resolveServiceEndpoint, serviceKey, type Project, type Service } from "@/lib/catalog";
+import { evaluateReadiness } from "@/lib/readiness.mjs";
 import { getCatalogStatuses } from "@/lib/status";
 
 function requireProject(projectId: string) {
@@ -42,6 +43,7 @@ function serviceSummary(service: Service) {
     endpoint: service.endpoint ?? null,
     selectedEndpoint: resolveServiceEndpoint(service),
     readiness: service.readiness ?? null,
+    readinessAssessment: evaluateReadiness(service.readiness),
     links: service.links ?? [],
     hasProbe: Boolean(service.probe),
     hasRunbook: Boolean(service.commands && Object.keys(service.commands).length),
@@ -86,6 +88,18 @@ export function searchProjects(query: string) {
         service.endpoint?.canonical,
         service.endpoint?.fallback,
         service.readiness?.profile,
+        service.readiness?.owner,
+        service.readiness?.dataClassification,
+        service.readiness?.costModel,
+        service.readiness?.deployment?.provider,
+        service.readiness?.deployment?.revision,
+        ...(service.readiness?.dependencies?.flatMap((dependency) => [
+          dependency.id,
+          dependency.kind,
+          dependency.name,
+          dependency.provider,
+          dependency.criticality,
+        ]) ?? []),
         ...(service.readiness?.evidence.flatMap((evidence) => [evidence.id, evidence.check, evidence.state, evidence.note]) ?? []),
         ...(service.links ?? []).flatMap((link) => [link.id, link.type, link.label, link.url]),
       ]),

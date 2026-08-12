@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Catalog, Host, LiveServiceStatus, Project, Service, ViewerContext } from "@/lib/catalog";
 import { resolveServiceEndpoint, serviceKey } from "@/lib/catalog";
+import { evaluateReadiness, groupRecoveryReadiness, type ReadinessAssessment } from "@/lib/readiness.mjs";
 
 type StatusResponse = { observedAt: string; statuses: LiveServiceStatus[] };
 type SelectedService = { project: Project; service: Service };
@@ -64,7 +65,7 @@ const profileLabels: Record<string, string> = {
 
 const devHubAgentRequest = `Use the DevHub plugin and its read-only MCP tools to register or update this project and its runnable services in the configured registry.
 
-Search DevHub for an existing project and services before proposing anything. Then inspect the current project locally to infer the services, URLs, host, runtime, operating mode, health endpoints and safe start/restart/log guidance. Propose an App Passport with evidence for monitoring, backup, restore, rollback, security review, privacy, ownership and cost; mark anything you cannot verify as unknown rather than passing. If a record already exists, update it instead of creating a duplicate.
+Search DevHub for an existing project and services before proposing anything. Then inspect the current project locally to infer the services, URLs, host, runtime, operating mode, health endpoints and safe start/restart/log guidance. Propose an App Passport with a non-secret owner, data classification, cost model, deployment revision and critical dependencies, plus evidence for monitoring, backup, restore, rollback, security review, privacy, ownership and cost. Mark anything you cannot verify as unknown rather than passing. If a record already exists, update it instead of creating a duplicate.
 
 Use native registration only when we control the repository and the metadata belongs there; otherwise use a private DevHub overlay without changing the project repository. Keep separate machines or independently operated instances as separate services. Never put secrets in the catalog.
 
@@ -124,6 +125,106 @@ function canOpenHere(service: Service, currentHostId: string | null) {
 
 function isEvidenceStale(validUntil?: string) {
   return Boolean(validUntil && Date.parse(validUntil) < Date.now());
+}
+
+type ReadinessEvidence = NonNullable<Service["readiness"]>["evidence"][number];
+type RecoveryState = ReadinessEvidence["state"] | "stale" | "registered";
+type RecoverySignal = {
+  id: string;
+  title: string;
+  state: RecoveryState;
+  label: string;
+  detail: string;
+};
+
+const recoveryStateLabels: Record<RecoveryState, string> = {
+  verified: "Verified",
+  declared: "Declared",
+  missing: "Missing",
+  "not-applicable": "Not applicable",
+  unknown: "Unknown",
+  stale: "Stale",
+  registered: "Registered",
+};
+
+function recoveryAssessmentSignal(assessment: ReadinessAssessment, check: ReadinessEvidence["check"], title: string): RecoverySignal {
+  const item = assessment.checks.find((candidate) => candidate.check === check);
+  if (!item) {
+    return {
+      id: check,
+      title,
+      state: "unknown",
+      label: "Unknown",
+      detail: `No ${title.toLowerCase()} evidence is registered.`,
+    };
+  }
+
+  return {
+    id: check,
+    title,
+    state: item.state,
+    label: recoveryStateLabels[item.state],
+    detail: item.evidence?.note ?? item.action ?? `No ${title.toLowerCase()} evidence is registered.`,
+  };
+}
+
+function recoverySignals(service: Service, assessment: ReadinessAssessment): RecoverySignal[] {
+  const logsLink = service.links?.some((link) => link.type === "logs") ?? false;
+  const logsCommand = Boolean(service.commands?.logs);
+  const logsLabel = logsLink && logsCommand
+    ? "Link + command registered"
+    : logsLink
+      ? "Link registered"
+      : logsCommand
+        ? "Command registered"
+        : "Unknown";
+  const deployment = recoveryAssessmentSignal(assessment, "deployment", "Deployment");
+  const rollback = recoveryAssessmentSignal(assessment, "rollback", "Rollback");
+  const backup = recoveryAssessmentSignal(assessment, "backup", "Backup");
+  const restore = recoveryAssessmentSignal(assessment, "restore", "Restore");
+  const ownership = recoveryAssessmentSignal(assessment, "ownership", "Ownership");
+  const deploymentFacts = service.readiness?.deployment;
+  if (deploymentFacts) {
+    const facts = [deploymentFacts.provider, deploymentFacts.revision, deploymentFacts.deployedAt
+      ? new Date(deploymentFacts.deployedAt).toLocaleString()
+      : null].filter(Boolean).join(" · ");
+    deployment.detail = facts ? `${facts}. ${deployment.detail}` : deployment.detail;
+  }
+  if (service.readiness?.owner) ownership.detail = `${service.readiness.owner}. ${ownership.detail}`;
+  const recoveryPriority: Record<RecoveryState, number> = {
+    missing: 6,
+    unknown: 5,
+    stale: 4,
+    declared: 3,
+    registered: 2,
+    "not-applicable": 1,
+    verified: 0,
+  };
+  const dataRecoveryState = [backup.state, restore.state].sort(
+    (left, right) => recoveryPriority[right] - recoveryPriority[left],
+  )[0];
+
+  return [
+    {
+      id: "logs",
+      title: "Logs",
+      state: logsLink || logsCommand ? "registered" : "unknown",
+      label: logsLabel,
+      detail: logsLink || logsCommand
+        ? `${logsLink ? "A reviewed logs link" : "No logs link"}; ${logsCommand ? "a host command" : "no host command"}.`
+        : "No logs link or host command is registered.",
+    },
+    deployment,
+    rollback,
+    {
+      id: "data-recovery",
+      title: "Backup + restore",
+      state: dataRecoveryState,
+      label: `Backup ${backup.label.toLowerCase()} · restore ${restore.label.toLowerCase()}`,
+      detail: `Backup: ${backup.detail} Restore: ${restore.detail}`,
+    },
+    ownership,
+  ];
 }
 
 function nextAction(service: Service, status: LiveServiceStatus, currentHostId: string | null) {
@@ -294,9 +395,12 @@ function ServicePanel({ selection, status, hosts, currentHostId, onClose }: {
       .map((link) => ({ ...link, type: link.type as string })),
   ];
   const readinessEvidence = service.readiness?.evidence ?? [];
-  const verifiedEvidence = readinessEvidence.filter((evidence) => evidence.state === "verified" && !isEvidenceStale(evidence.validUntil)).length;
-  const staleEvidence = readinessEvidence.filter((evidence) => evidence.state === "verified" && isEvidenceStale(evidence.validUntil)).length;
-  const unknownEvidence = readinessEvidence.filter((evidence) => evidence.state === "unknown" || evidence.state === "missing").length;
+  const readinessAssessment = evaluateReadiness(service.readiness);
+  const recoveryAssessment = groupRecoveryReadiness(readinessAssessment);
+  const recoveryItems = recoverySignals(service, { ...readinessAssessment, ...recoveryAssessment });
+  const verifiedEvidence = readinessAssessment.counts.verified;
+  const staleEvidence = readinessAssessment.counts.stale;
+  const unknownEvidence = readinessAssessment.counts.unknown + readinessAssessment.counts.missing;
   const workspace = project.workspaces?.find((item) => item.host === service.host)?.path;
   const mode = serviceMode(service);
   const commandName = isAttention(service, status)
@@ -358,6 +462,17 @@ function ServicePanel({ selection, status, hosts, currentHostId, onClose }: {
             <div><small>App Passport</small><strong>{service.readiness ? profileLabels[service.readiness.profile] : "Not assessed"}</strong></div>
             {service.readiness ? <span>{verifiedEvidence} verified{staleEvidence ? ` · ${staleEvidence} stale` : ""}{unknownEvidence ? ` · ${unknownEvidence} unknown` : ""}</span> : null}
           </header>
+          {service.readiness ? (
+            <dl className="passport-facts">
+              <div><dt>Owner</dt><dd>{service.readiness.owner ?? "Unknown"}</dd></div>
+              <div><dt>Data</dt><dd>{service.readiness.dataClassification ?? "Unknown"}</dd></div>
+              <div><dt>Cost</dt><dd>{service.readiness.costModel ?? "Unknown"}</dd></div>
+              <div><dt>Deployed</dt><dd>{service.readiness.deployment?.deployedAt ? new Date(service.readiness.deployment.deployedAt).toLocaleDateString() : "Unknown"}</dd></div>
+              <div className="passport-dependencies"><dt>Dependencies</dt><dd>{service.readiness.dependencies?.length
+                ? service.readiness.dependencies.map((dependency) => `${dependency.name} · ${dependency.criticality}`).join("; ")
+                : "None registered"}</dd></div>
+            </dl>
+          ) : null}
           {readinessEvidence.length ? (
             <div className="passport-evidence">
               {readinessEvidence.map((evidence) => {
@@ -374,6 +489,27 @@ function ServicePanel({ selection, status, hosts, currentHostId, onClose }: {
               })}
             </div>
           ) : <p className="passport-empty">No readiness evidence is registered. Unknown is not a passing result; ask Codex to inspect this project and propose a reviewed passport.</p>}
+          {readinessAssessment.gaps.length ? (
+            <p className="passport-next"><strong>Next:</strong> {readinessAssessment.gaps[0].action}</p>
+          ) : null}
+        </section>
+
+        <section className="recovery-card" aria-labelledby="service-recovery-title">
+          <header>
+            <div><small>Recovery &amp; ownership</small><strong id="service-recovery-title">Can you get it back?</strong></div>
+            <span>Read-only</span>
+          </header>
+          <dl>
+            {recoveryItems.map((item) => (
+              <div key={item.id}>
+                <dt><span className={`recovery-state recovery-state-${item.state}`} aria-hidden="true" />{item.title}</dt>
+                <dd>
+                  <strong>{item.label}</strong>
+                  <small>{item.detail}</small>
+                </dd>
+              </div>
+            ))}
+          </dl>
         </section>
 
         {service.visibility === "local" && placement.kind !== "here" ? (
@@ -501,6 +637,13 @@ export function DevHubDashboard({ catalog }: { catalog: Catalog }) {
   const upCount = serviceStatuses.filter(({ status }) => status.source === "probe" && (status.state === "up" || status.state === "protected")).length;
   const attentionCount = serviceStatuses.filter(({ service, status }) => isAttention(service, status)).length;
   const serviceCount = serviceStatuses.length;
+  const portfolioAssessments = catalog.projects.flatMap((project) => project.services.map((service) => ({
+    assessed: Boolean(service.readiness),
+    assessment: evaluateReadiness(service.readiness),
+  })));
+  const passportCount = portfolioAssessments.filter((item) => item.assessed).length;
+  const gapServiceCount = portfolioAssessments.filter((item) => item.assessment.gaps.length > 0).length;
+  const staleEvidenceCount = portfolioAssessments.reduce((total, item) => total + item.assessment.counts.stale, 0);
 
   return (
     <main>
@@ -519,7 +662,7 @@ export function DevHubDashboard({ catalog }: { catalog: Catalog }) {
           <div className="hero-copy">
             <p className="eyebrow">Operational memory for everything you build</p>
             <h1>Git remembers the code.<br/><em>DevHub remembers how it runs.</em></h1>
-            <p>Your coding agent can build and deploy it. DevHub helps you understand it, trust it, operate it and recover it across every laptop, server and cloud.</p>
+            <p>Your coding agent can build and deploy it. DevHub shows where it runs, how it is monitored, what safety and cost evidence exists, and how to recover it across every laptop, server and cloud.</p>
             <div className="hero-actions">
               <a className="hero-primary" href="#catalog">Explore {serviceCount} services</a>
               <a className="hero-secondary" href="#why-devhub">See how it works ↓</a>
@@ -572,6 +715,21 @@ export function DevHubDashboard({ catalog }: { catalog: Catalog }) {
           <div><p className="eyebrow">Operational catalog</p><h2>{visibleProjects.length} visible projects</h2></div>
           <p>{lastRefresh ? `Live probes ${new Date(lastRefresh).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Waiting for live probes"}</p>
         </div>
+
+        <section className="portfolio-review" aria-label="Portfolio review">
+          <div>
+            <p className="eyebrow">Portfolio guardian</p>
+            <h3>What needs a decision before it becomes a surprise?</h3>
+            <p>Catalog-only review of ownership, monitoring and recovery evidence. Unknown is a question to investigate, not a claim that production is broken.</p>
+          </div>
+          <dl>
+            <div><dt>{passportCount}/{serviceCount}</dt><dd>with a Passport</dd></div>
+            <div><dt>{gapServiceCount}</dt><dd>with expected evidence gaps</dd></div>
+            <div><dt>{staleEvidenceCount}</dt><dd>stale evidence items</dd></div>
+          </dl>
+          <a href="#registration">Review with your agent →</a>
+          <small>Read-only · no magic score · no network scan</small>
+        </section>
 
         <div className="project-grid">
           {visibleProjects.map((project) => (

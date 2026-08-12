@@ -2,7 +2,7 @@
   "manifestVersion": 2,
   "exporterVersion": 1,
   "source": {
-    "commit": "536b77cf743490200b866b7d56b1c8badb2aab2e",
+    "commit": "d9645664548c08474d4e4813fb03fb082ea6f959",
     "state": "clean"
   },
   "files": [
@@ -48,7 +48,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "0533e1f3b0342cbb55ffa78a2b482740e5ac6498cf256ea06696ea80a4c02c36"
+      "sha256": "6a49a91ecb87ae9b205a8e3a99d46eca05feee2d57bc6fdeb0e29fccdab9c0ea"
     },
     {
       "path": "CODE_OF_CONDUCT.md",
@@ -64,7 +64,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "cc87e24bd37df357f4b614b0c89494aacb1da740a122ade614807fed21e9647c"
+      "sha256": "c37ffd1a5eed3cb840431dd8b7442d812f901eb962389e1bc251a2f5214066cf"
     },
     {
       "path": "SECURITY.md",
@@ -76,7 +76,7 @@
     },
     {
       "path": "app/DevHubDashboard.tsx",
-      "sha256": "78ebc0899e38b4d68ff6f8e1cef5abda712f30a17c4f763d35dc2a66a8409343"
+      "sha256": "00de872e0c0d4bda39b43c2a6745206cdfcf565c3f58f5b0b7fcd1f12b088fe5"
     },
     {
       "path": "app/api/context/route.ts",
@@ -88,11 +88,11 @@
     },
     {
       "path": "app/generated/catalog.json",
-      "sha256": "c05536e41d015bd16aee7b5635e3df71256a7a33e3b6b1b1074003c99da2b6e2"
+      "sha256": "b7fae753ce532ded8d522253876a642faf58cf0bb1f8b5a3530cd34bc1c80675"
     },
     {
       "path": "app/globals.css",
-      "sha256": "e7fb35b88a976efe70deda02355562c1916e9e61f0182e8ac3cb530f16e6bdc3"
+      "sha256": "f25d4b2ca612c835196f0905d5a9d0e10ab5a51fff31732d61efc0758376249c"
     },
     {
       "path": "app/layout.tsx",
@@ -116,11 +116,15 @@
     },
     {
       "path": "catalog/projects/devhub.yaml",
-      "sha256": "bd60ef44f2c7fc5e83c6e5921a28cfa69d52d5be21c31c7965fb64746d1625e9"
+      "sha256": "a8564defd89d3d6ca42720194b438ed1f775ffd6bd8dafe3ea8e2dbe73179894"
     },
     {
       "path": "catalog/projects/example-app.yaml",
-      "sha256": "d0fedc49fade18a6ab6daa929b078dbe7f4be8a065f7d74094954fcbc9ca6dda"
+      "sha256": "8e2969f62cdba6aa084c5ef34b9d4ed09274147651abd55020b5ff0af3f95960"
+    },
+    {
+      "path": "config/readiness-policy.json",
+      "sha256": "58ed161017988f305236fbb76fae3475f639d56185865500abe1d013cc336dc6"
     },
     {
       "path": "deploy/docker/Dockerfile",
@@ -152,19 +156,23 @@
     },
     {
       "path": "docs/APP_PASSPORT.md",
-      "sha256": "e1f7796072533b8b0e4a19d50f61cb99fe1aac0b7fdfc6134d7571211aad9b1e"
+      "sha256": "cb4833bcfc1e749f8786ba86edf9c9905b62635b0d99e2d93ca2410b68514d9a"
     },
     {
       "path": "docs/CONFIGURATION.md",
-      "sha256": "88da8877c985b33872e8a08bb449afab5bfeb9295ac2e9bd702d5578b9546f64"
+      "sha256": "4a7ec215ff7daa7a5a97d695c745e24e3889734a953432beba7e6115ded3ffd1"
     },
     {
       "path": "docs/INSTALLATION.md",
-      "sha256": "5d1858d23d6e0378006382c94a2cbe0e18e9fba1a1d07adf920dc0e2eee15a9c"
+      "sha256": "2308c4390b1fc21efca425ef312bccfc5b9548db0762b9b8f0d7f7f6cc70cf08"
     },
     {
       "path": "docs/INTEGRATIONS_CODEX.md",
       "sha256": "c6d9675787245dc492e04a547f45188028621138cf4f03ad4b4ac2b822bca65e"
+    },
+    {
+      "path": "docs/PORTFOLIO_REVIEW.md",
+      "sha256": "f66b747debb9ca6f9a21d61afbdc67b45b0c9b42638ed940d2b39c6c995507e1"
     },
     {
       "path": "docs/PRIVACY.md",
@@ -180,7 +188,7 @@
     },
     {
       "path": "examples/demo/.devhub/project.yaml",
-      "sha256": "d0fedc49fade18a6ab6daa929b078dbe7f4be8a065f7d74094954fcbc9ca6dda"
+      "sha256": "8e2969f62cdba6aa084c5ef34b9d4ed09274147651abd55020b5ff0af3f95960"
     },
     {
       "path": "examples/demo/catalog/hosts.yaml",
@@ -188,15 +196,15 @@
     },
     {
       "path": "examples/demo/catalog/projects/devhub.yaml",
-      "sha256": "bd60ef44f2c7fc5e83c6e5921a28cfa69d52d5be21c31c7965fb64746d1625e9"
+      "sha256": "a8564defd89d3d6ca42720194b438ed1f775ffd6bd8dafe3ea8e2dbe73179894"
     },
     {
       "path": "examples/demo/catalog/projects/example-app.yaml",
-      "sha256": "d0fedc49fade18a6ab6daa929b078dbe7f4be8a065f7d74094954fcbc9ca6dda"
+      "sha256": "8e2969f62cdba6aa084c5ef34b9d4ed09274147651abd55020b5ff0af3f95960"
     },
     {
       "path": "lib/catalog.ts",
-      "sha256": "5e63eefa76052828675dc6d634f90d19ce9a23c72aa0ea704b9f089f7f8c07ca"
+      "sha256": "56bafc88103764e5e6c020d392302c22cef382778db46091552a717ff93d18fa"
     },
     {
       "path": "lib/mcp-auth.ts",
@@ -204,11 +212,19 @@
     },
     {
       "path": "lib/mcp-server.ts",
-      "sha256": "fb06f0f065540725572fcd688633cbd3a160e11fb29c9ac3354bd44649fc2c48"
+      "sha256": "10fcad8f53c377b819fdb509b1950170a7c2a673347ff0067b88afb26d6ffd2b"
     },
     {
       "path": "lib/mcp-tools.ts",
-      "sha256": "9371a2bb303ea801bad57ea06e56de4859fe4cc8e3c013f0dca1d8484a729204"
+      "sha256": "3ca8de6c9254c7562eeace9fc4ffb368b9b7247c80a11a999484f8546154ed9d"
+    },
+    {
+      "path": "lib/readiness.d.mts",
+      "sha256": "37f13d47c58e3a5b1db166b96619e34d37d0e875b15937903549e9b347e251c7"
+    },
+    {
+      "path": "lib/readiness.mjs",
+      "sha256": "700a70671b675fb55b43088c3f0cf1e7f4b008727623eefc4525b68f8c094bf1"
     },
     {
       "path": "lib/status.ts",
@@ -224,23 +240,23 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "c9c3706f76a936bb8b578a9d51af51276bfb52abe2afe4096e5c5674b72dfa89"
+      "sha256": "3e1a14aaec59b7899e535b89186b50dc5fb2a0acfc2ca40d3453d671a9174347"
     },
     {
       "path": "package.json",
-      "sha256": "b290c97aa1dc0501dc4d9856f86b4f8833cf72634a8c653b9b1bbc53710efd59"
+      "sha256": "7dfe3fbf85a39caf793d3d8ff37f39a139f3299dd2785d22a8a66f0b04a5176f"
     },
     {
       "path": "plugins/devhub/.codex-plugin/plugin.json",
-      "sha256": "3b7d2e83e3018235862b428a519ecbc25422b8269a02d7a087d41c75fb5a07ed"
+      "sha256": "bc07aaa5c43952a205c3f319d2a33e106bdeca73fb9d62b80eba8c97d183628a"
     },
     {
       "path": "plugins/devhub/skills/devhub-registry/SKILL.md",
-      "sha256": "4708204bc8c0aba211b4b3d745e20e297f0cebfefd44dc6933f812665ad1bba1"
+      "sha256": "d11ac0ed2eaffc253f58cc0cedf31389a49e0b39ebf7be9e328509533afeae0d"
     },
     {
       "path": "plugins/devhub/skills/devhub-registry/agents/openai.yaml",
-      "sha256": "cf515a35b46e80af8487797d733ed0d6ccc74d51dd0ee16d3e079c09e538b6e6"
+      "sha256": "82e27a4f08751236cf8fde40c49d75d5e083804dded1b808f17e4ee38f753a3e"
     },
     {
       "path": "postcss.config.mjs",
@@ -248,7 +264,7 @@
     },
     {
       "path": "public/catalog.json",
-      "sha256": "c05536e41d015bd16aee7b5635e3df71256a7a33e3b6b1b1074003c99da2b6e2"
+      "sha256": "b7fae753ce532ded8d522253876a642faf58cf0bb1f8b5a3530cd34bc1c80675"
     },
     {
       "path": "public/devhub-preview.png",
@@ -268,11 +284,15 @@
     },
     {
       "path": "schema/project.schema.json",
-      "sha256": "988a9686d93947f4903a762263c855733c36c892135c3c76451b0ba8ccda623b"
+      "sha256": "cfefb8061d27e9e854d6d30bd6585362325da6df7d9ee6b0df6232c0a622a758"
     },
     {
       "path": "scripts/build-release-artifacts.mjs",
       "sha256": "5d133387d64542cccd68d5505add996f823596b19f2e6d8bebc3943d1949a3eb"
+    },
+    {
+      "path": "scripts/catalog-init.mjs",
+      "sha256": "ee8712df61aa9952502496783700ca198376d9585f6e8c9bb9e3590a63d4d073"
     },
     {
       "path": "scripts/catalog-tools.mjs",
@@ -280,7 +300,7 @@
     },
     {
       "path": "scripts/catalog-validation.mjs",
-      "sha256": "ebb7464f39f02a0d0fb9642ec9a9742b09eb4ae381a3051be63e61ea9436d65c"
+      "sha256": "999831c6500fde220aa0c1530851b8f4788b01c9dc7110e48450f09514454f8c"
     },
     {
       "path": "scripts/compile-catalog.mjs",
@@ -292,11 +312,15 @@
     },
     {
       "path": "scripts/devhub.mjs",
-      "sha256": "dff37cd9dec518a465cc3bc4d0ef8e29c8fefdc49c9617330626cd3d758da7fd"
+      "sha256": "28ff225c9b1aa2fa5135a8f9ed3a5f84fe2eb70ad1c39cc01f2f01c70dbbe53e"
     },
     {
       "path": "scripts/host-inspection.mjs",
       "sha256": "368767bc7a5f798b214a767f7226dbf5458df4aeb33ce2674b1d989afbad4c55"
+    },
+    {
+      "path": "scripts/portfolio-review.mjs",
+      "sha256": "4ed34804c2e00c28289a9780abc7d14231a04dd8e51ff9e5f7d0d844c41670d8"
     },
     {
       "path": "scripts/reconciliation.mjs",
@@ -320,11 +344,15 @@
     },
     {
       "path": "templates/project.yaml",
-      "sha256": "f0d7d90a032715c0464100a967aa1dafb45e11ff3c1bd6047b380b9f2d1ef0dd"
+      "sha256": "70b7d26fa54d78587e96c4fc99063db5600e175b164bffa9919105eec62219f9"
+    },
+    {
+      "path": "tests/catalog-init.test.mjs",
+      "sha256": "8fc75911f6cc86c53d8f3cd0351d86217b86009c3b6552f0744a393f85a82ab0"
     },
     {
       "path": "tests/catalog-schema.test.mjs",
-      "sha256": "9afd714ea21a81c4b7256860fe26a4e2a67253acf12ee597c9e7b22b257a8523"
+      "sha256": "b668d7dd831ae05486fe8b969742d11b157f248d7ab07e5bb9d10209940bdf01"
     },
     {
       "path": "tests/catalog.test.mjs",
@@ -340,7 +368,19 @@
     },
     {
       "path": "tests/mcp.test.mjs",
-      "sha256": "8db4ed820bc1fb82bf08f44944ff996617e9174a84f7250cbe024cafa57f0c14"
+      "sha256": "4652ae43cb7a6cda98784a7751cd1c75d09c8d9742daa182f93bc6e9e0fea5d1"
+    },
+    {
+      "path": "tests/portfolio-review-cli.test.mjs",
+      "sha256": "a6d14665c7553268aa5e575847d778ed16060a206add1127518570787dcb27e8"
+    },
+    {
+      "path": "tests/portfolio-review.test.mjs",
+      "sha256": "d69fe980c5b8b8dcd72cb4a2a25b14b6a9adf48cff9ee898624d01de6f4c2aa0"
+    },
+    {
+      "path": "tests/readiness-policy.test.mjs",
+      "sha256": "37ec5c6e2fe4d0f34ff31fe90070046e6c3fd2a764a35ee737a94e5bbd95cada"
     },
     {
       "path": "tests/reconciliation.test.mjs",
@@ -352,7 +392,7 @@
     },
     {
       "path": "tests/rendered-html.test.mjs",
-      "sha256": "a93923548ea48082e7f89685918daa1c1e7d54cfdb3305d7ed31279352e44aaf"
+      "sha256": "4dbba145149b82cf08ffe355e016e0e6210c4d9920be299f300aee7c2a2d7700"
     },
     {
       "path": "tests/semantic-diff.test.mjs",

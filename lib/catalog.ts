@@ -60,6 +60,25 @@ export type ReadinessEvidence = {
 
 export type ServiceReadiness = {
   profile: "personal" | "internal" | "customer-facing" | "sensitive";
+  owner?: string;
+  dataClassification?: "none" | "internal" | "personal" | "sensitive" | "regulated" | "unknown";
+  costModel?: "free" | "fixed" | "metered" | "unknown";
+  deployment?: {
+    source: "operator" | "agent" | "integration" | "catalog";
+    provider?: string;
+    revision?: string;
+    deployedAt?: string;
+    url?: string;
+  };
+  dependencies?: Array<{
+    id: string;
+    kind: "data-store" | "external-api" | "auth" | "payment" | "messaging" | "storage" | "ai-model" | "other";
+    name: string;
+    criticality: "required" | "degraded" | "optional";
+    provider?: string;
+    url?: string;
+    note?: string;
+  }>;
   evidence: ReadinessEvidence[];
 };
 

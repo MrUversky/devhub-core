@@ -10,8 +10,12 @@ const serviceFields = new Set([
   "readiness",
 ]);
 const serviceEndpointFields = new Set(["canonical", "fallback"]);
-const readinessFields = new Set(["profile", "evidence"]);
+const readinessFields = new Set([
+  "profile", "owner", "dataClassification", "costModel", "deployment", "dependencies", "evidence",
+]);
 const readinessEvidenceFields = new Set(["id", "check", "state", "source", "note", "observedAt", "validUntil", "url"]);
+const passportDeploymentFields = new Set(["source", "provider", "revision", "deployedAt", "url"]);
+const passportDependencyFields = new Set(["id", "kind", "name", "criticality", "provider", "url", "note"]);
 const serviceLinkFields = new Set(["id", "type", "label", "url"]);
 const probeFields = new Set(["type", "url", "successStatuses", "timeoutMs"]);
 const reportFields = new Set(["state", "observedAt", "note"]);
@@ -26,6 +30,10 @@ const readinessProfiles = new Set(["personal", "internal", "customer-facing", "s
 const readinessChecks = new Set(["monitoring", "alerting", "backup", "restore", "rollback", "security-review", "privacy", "ownership", "cost", "deployment"]);
 const readinessStates = new Set(["verified", "declared", "missing", "not-applicable", "unknown"]);
 const readinessSources = new Set(["operator", "agent", "integration", "catalog"]);
+const dataClassifications = new Set(["none", "internal", "personal", "sensitive", "regulated", "unknown"]);
+const costModels = new Set(["free", "fixed", "metered", "unknown"]);
+const dependencyKinds = new Set(["data-store", "external-api", "auth", "payment", "messaging", "storage", "ai-model", "other"]);
+const dependencyCriticalities = new Set(["required", "degraded", "optional"]);
 const hostKinds = new Set(["mac", "linux", "cloud"]);
 const hostLocations = new Set(["local", "remote", "cloud"]);
 const observedStates = new Set(["up", "down", "stopped", "degraded", "registered", "unknown"]);
@@ -202,6 +210,54 @@ function validateReadiness(readiness, source, fieldPath) {
   requireObject(readiness, source, fieldPath);
   rejectUnknownFields(readiness, readinessFields, source, fieldPath);
   requireEnum(readiness.profile, readinessProfiles, source, `${fieldPath}.profile`);
+  if (readiness.owner !== undefined) {
+    requireString(readiness.owner, source, `${fieldPath}.owner`);
+    if (secretAssignmentPattern.test(readiness.owner)) fail(source, `${fieldPath}.owner`, "must not contain an inline secret assignment");
+  }
+  if (readiness.dataClassification !== undefined) {
+    requireEnum(readiness.dataClassification, dataClassifications, source, `${fieldPath}.dataClassification`);
+  }
+  if (readiness.costModel !== undefined) requireEnum(readiness.costModel, costModels, source, `${fieldPath}.costModel`);
+  if (readiness.deployment !== undefined) {
+    const deploymentPath = `${fieldPath}.deployment`;
+    requireObject(readiness.deployment, source, deploymentPath);
+    rejectUnknownFields(readiness.deployment, passportDeploymentFields, source, deploymentPath);
+    requireEnum(readiness.deployment.source, readinessSources, source, `${deploymentPath}.source`);
+    for (const field of ["provider", "revision"]) {
+      if (readiness.deployment[field] !== undefined) {
+        requireString(readiness.deployment[field], source, `${deploymentPath}.${field}`);
+        if (secretAssignmentPattern.test(readiness.deployment[field])) fail(source, `${deploymentPath}.${field}`, "must not contain an inline secret assignment");
+      }
+    }
+    if (readiness.deployment.revision !== undefined && readiness.deployment.revision.length > 200) {
+      fail(source, `${deploymentPath}.revision`, "must contain at most 200 characters");
+    }
+    if (readiness.deployment.deployedAt !== undefined) validateDateTime(readiness.deployment.deployedAt, source, `${deploymentPath}.deployedAt`);
+    if (readiness.deployment.url !== undefined) requireHttpUrl(readiness.deployment.url, source, `${deploymentPath}.url`);
+  }
+  if (readiness.dependencies !== undefined) {
+    requireArray(readiness.dependencies, source, `${fieldPath}.dependencies`);
+    if (readiness.dependencies.length > 50) fail(source, `${fieldPath}.dependencies`, "must contain at most 50 items");
+    const dependencyIds = new Set();
+    for (const [index, dependency] of readiness.dependencies.entries()) {
+      const dependencyPath = `${fieldPath}.dependencies[${index}]`;
+      requireObject(dependency, source, dependencyPath);
+      rejectUnknownFields(dependency, passportDependencyFields, source, dependencyPath);
+      requireId(dependency.id, source, `${dependencyPath}.id`);
+      if (dependencyIds.has(dependency.id)) fail(source, `${dependencyPath}.id`, `duplicates dependency ${dependency.id}`);
+      dependencyIds.add(dependency.id);
+      requireEnum(dependency.kind, dependencyKinds, source, `${dependencyPath}.kind`);
+      requireString(dependency.name, source, `${dependencyPath}.name`);
+      requireEnum(dependency.criticality, dependencyCriticalities, source, `${dependencyPath}.criticality`);
+      for (const field of ["provider", "note"]) {
+        if (dependency[field] !== undefined) {
+          requireString(dependency[field], source, `${dependencyPath}.${field}`);
+          if (secretAssignmentPattern.test(dependency[field])) fail(source, `${dependencyPath}.${field}`, "must not contain an inline secret assignment");
+        }
+      }
+      if (dependency.url !== undefined) requireHttpUrl(dependency.url, source, `${dependencyPath}.url`);
+    }
+  }
   requireArray(readiness.evidence, source, `${fieldPath}.evidence`);
   if (readiness.evidence.length > 50) fail(source, `${fieldPath}.evidence`, "must contain at most 50 items");
   const evidenceIds = new Set();

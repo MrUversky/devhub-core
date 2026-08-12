@@ -95,12 +95,15 @@ test("MCP catalog, runbook and reconciliation tools return reviewed structured d
   assert.equal("commands" in project.structuredContent.services[0], false);
   assert.deepEqual(project.structuredContent.services[0].links, projectFixture.services[0].links ?? []);
   assert.deepEqual(project.structuredContent.services[0].readiness, projectFixture.services[0].readiness ?? null);
+  assert.equal("score" in project.structuredContent.services[0].readinessAssessment, false);
+  assert.ok(Array.isArray(project.structuredContent.services[0].readinessAssessment.gaps));
 
   const service = await callTool("get_service", { projectId: projectFixture.id, serviceId: serviceFixture.id });
   assert.equal(service.structuredContent.key, `${projectFixture.id}/${serviceFixture.id}`);
   assert.equal("commands" in service.structuredContent.service, false);
   assert.deepEqual(service.structuredContent.service.links, serviceFixture.links ?? []);
   assert.deepEqual(service.structuredContent.service.readiness, serviceFixture.readiness ?? null);
+  assert.equal("score" in service.structuredContent.service.readinessAssessment, false);
 
   assert.ok(endpointFixture, "fixture catalog needs one service with endpoint selection");
   const endpointService = await callTool("get_service", {
