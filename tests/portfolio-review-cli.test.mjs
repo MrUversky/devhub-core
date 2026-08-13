@@ -56,3 +56,58 @@ services:
     await rm(temporary, { recursive: true, force: true });
   }
 });
+
+test("review-portfolio rejects forged normalized evidence fixtures", async () => {
+  const temporary = await mkdtemp(path.join(os.tmpdir(), "devhub-provider-review-"));
+  const catalogDirectory = path.join(temporary, "catalog");
+  const invalidFile = path.join(temporary, "provider-export.json");
+  await mkdir(path.join(catalogDirectory, "projects"), { recursive: true });
+  await writeFile(path.join(catalogDirectory, "hosts.yaml"), `version: 1
+hosts:
+  - id: example-host
+    name: Example host
+    kind: cloud
+    location: cloud
+`);
+  await writeFile(path.join(catalogDirectory, "projects/example-project.yaml"), `version: 1
+id: example-project
+title: Example project
+registration: overlay
+description: Strict normalized evidence fixture.
+lifecycle: active
+kind: product
+services:
+  - id: web
+    name: Web
+    kind: website
+    environment: production
+    host: example-host
+    runtime: example-cloud
+    mode: managed
+    visibility: public
+    url: https://app.example.test
+`);
+  await writeFile(invalidFile, `${JSON.stringify({ resources: [{ id: "unreviewed-resource" }] })}\n`);
+
+  try {
+    const before = await readdir(path.join(catalogDirectory, "projects"));
+    await assert.rejects(
+      execFileAsync(process.execPath, [
+        cli, "review-portfolio", "--json", "--evidence-fixture", invalidFile,
+      ], {
+        cwd: root,
+        env: { ...process.env, DEVHUB_CATALOG_DIR: catalogDirectory },
+      }),
+      (error) => {
+        const failure = JSON.parse(error.stdout);
+        assert.equal(error.code, 3);
+        assert.equal(failure.error.code, "unsupported-evidence-input");
+        assert.match(failure.error.message, /not accepted by the production CLI/);
+        return true;
+      },
+    );
+    assert.deepEqual(await readdir(path.join(catalogDirectory, "projects")), before);
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+});

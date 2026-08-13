@@ -2,6 +2,17 @@
 
 Notable changes to the public DevHub snapshot are recorded here.
 
+## 0.7.0-alpha.1 — Read-only provider evidence
+
+- Added a normalized read-only evidence-adapter contract with exact service
+  identity, freshness and fail-closed unknown results.
+- Added CLI collection and Portfolio Guardian review from reviewed binding
+  files without changing the catalog or provider.
+- Added narrow GitHub Release, Actions deployment and workflow-monitoring
+  adapters with fictional tests and a configurable public example.
+- Added reviewable deployment drift, stale recovery evidence and possible
+  recurring-cost findings without automatic remediation or deletion.
+
 ## 0.6.0-alpha.1 — Operational context
 
 - Added profile-specific App Passport expectations without a magic score.

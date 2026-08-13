@@ -1,0 +1,28 @@
+{
+  "status": "success",
+  "observedIdentity": {
+    "repository": "example/app",
+    "environment": "production",
+    "deploymentId": 42
+  },
+  "observedAt": "2026-08-13T10:00:00.000Z",
+  "evidence": [
+    {
+      "id": "provider-deployment",
+      "check": "deployment",
+      "state": "verified",
+      "note": "The reviewed production deployment was observed.",
+      "url": "https://provider.example.test/example/app/deployments/42"
+    }
+  ],
+  "deployment": {
+    "identity": "deployment-42",
+    "revision": "abc123",
+    "url": "https://provider.example.test/example/app/deployments/42",
+    "host": "provider-edge"
+  },
+  "recurringCost": {
+    "state": "present",
+    "url": "https://provider.example.test/example/app/billing"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "bindings": [
+    {
+      "projectId": "devhub",
+      "serviceId": "dashboard",
+      "adapterId": "github-release-deployment-v1",
+      "provider": "github",
+      "reviewedIdentity": {
+        "owner": "example",
+        "repository": "devhub",
+        "tag": "v0.0.0-example",
+        "releaseId": "1001",
+        "targetCommitish": "main",
+        "targetSha": "0123456789abcdef0123456789abcdef01234567"
+      },
+      "checks": ["deployment"],
+      "freshForSeconds": 2592000
+    }
+  ]
+}

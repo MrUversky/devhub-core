@@ -1,0 +1,17 @@
+{
+  "status": "success",
+  "observedIdentity": {
+    "repository": "example/app",
+    "environment": "production",
+    "deploymentId": 42
+  },
+  "observedAt": "2026-08-01T10:00:00.000Z",
+  "evidence": [
+    {
+      "id": "provider-deployment",
+      "check": "deployment",
+      "state": "verified",
+      "note": "The reviewed deployment was observed before the freshness window expired."
+    }
+  ]
+}

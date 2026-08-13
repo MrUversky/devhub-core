@@ -1,6 +1,7 @@
 import { evaluateReadiness, PROFILE_EXPECTATIONS } from "../lib/readiness.mjs";
+import { validateEvidenceAdapterResult } from "../lib/evidence-adapters.mjs";
 
-const STATE_ORDER = Object.freeze({ missing: 0, stale: 1, unknown: 2 });
+const STATE_ORDER = Object.freeze({ drift: 0, missing: 1, stale: 2, unknown: 3 });
 const SEVERITY_ORDER = Object.freeze({ high: 0, medium: 1, low: 2 });
 
 const NEXT_ACTIONS = Object.freeze({
@@ -16,6 +17,11 @@ const NEXT_ACTIONS = Object.freeze({
   deployment: "Register evidence for the deployed revision and deployment procedure.",
   "readiness-profile": "Choose the smallest fitting App Passport profile and add only evidence that can be reviewed.",
   "recovery-guidance": "Add a reviewed logs or recovery entry point, then verify rollback or restore where applicable.",
+  "provider-evidence": "Refresh this exact reviewed evidence binding; do not enumerate the provider account.",
+  "deployment-identity": "Open an owner review of the observed deployment identity before changing its binding or catalog record.",
+  "deployment-url": "Open an owner review of the observed service URL before changing the catalog.",
+  "deployment-host": "Open an owner review of the observed host before changing the catalog.",
+  "recurring-cost": "Open an owner review of the linked recurring-cost evidence before changing provider state.",
 });
 
 function asDate(now) {
@@ -28,14 +34,23 @@ function serviceIdentity(project, service) {
   return { project: project.id, service: service.id };
 }
 
-function finding(project, service, { check, state, evidence = null, reason, severity }) {
+function finding(project, service, {
+  check,
+  state,
+  evidence = null,
+  reason,
+  severity,
+  uncertainty = null,
+  recommendedNextAction = NEXT_ACTIONS[check],
+}) {
   return {
     ...serviceIdentity(project, service),
     check,
     state,
     evidence,
     reason,
-    recommendedNextAction: NEXT_ACTIONS[check],
+    uncertainty,
+    recommendedNextAction,
     severity,
   };
 }
@@ -129,6 +144,225 @@ function operationalFindings(project, service, existingFindings, now) {
   return findings;
 }
 
+function normalizedUrl(value) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (url.pathname !== "/") url.pathname = url.pathname.replace(/\/+$/, "");
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return value;
+  }
+}
+
+function reviewedServiceUrls(service) {
+  return new Set([
+    service.endpoint?.canonical,
+    service.endpoint?.fallback,
+    service.url,
+    ...(service.links ?? []).filter((link) => link.type === "primary").map((link) => link.url),
+  ].map(normalizedUrl).filter(Boolean));
+}
+
+function evidenceTimestamp(value) {
+  const timestamp = Date.parse(value ?? "");
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function evidenceIsCurrent(item, now) {
+  const validUntil = evidenceTimestamp(item.validUntil);
+  return validUntil === null || validUntil >= now.getTime();
+}
+
+function reviewedResolution(service, check, observation, now) {
+  const observedAt = evidenceTimestamp(observation.observedAt ?? observation.freshness?.observedAt);
+  return (service.readiness?.evidence ?? []).find((item) => {
+    if (item.check !== check || !evidenceIsCurrent(item, now)) return false;
+    if (item.state === "not-applicable") return item.note.trim().length > 0;
+    if (item.state !== "verified") return false;
+    const reviewedAt = evidenceTimestamp(item.observedAt);
+    return observedAt !== null && reviewedAt !== null && reviewedAt >= observedAt;
+  }) ?? null;
+}
+
+function providerEvidenceItem(observation, check) {
+  return [...(observation.evidence ?? [])]
+    .filter((item) => item.check === check)
+    .sort((left, right) => (evidenceTimestamp(right.observedAt) ?? Number.NEGATIVE_INFINITY)
+      - (evidenceTimestamp(left.observedAt) ?? Number.NEGATIVE_INFINITY)
+      || left.id.localeCompare(right.id))[0] ?? null;
+}
+
+function providerEvidenceRef(observation, { check = "deployment", observed = null, url = null } = {}) {
+  const item = providerEvidenceItem(observation, check);
+  return {
+    type: "normalized-provider-observation",
+    adapter: observation.identity.adapterId,
+    provider: observation.identity.provider,
+    reviewedIdentity: observation.identity.reviewedIdentity,
+    evidenceId: item?.id ?? null,
+    check,
+    state: item?.state ?? (observation.execution.state === "succeeded" ? "verified" : "unknown"),
+    freshness: observation.freshness.state,
+    observedAt: item?.observedAt ?? observation.freshness.observedAt,
+    validUntil: item?.validUntil ?? observation.freshness.validUntil,
+    url: url ?? item?.url ?? null,
+    observed,
+  };
+}
+
+function observationIdentity(observation) {
+  const { projectId, serviceId, adapterId, provider, reviewedIdentity } = observation.identity;
+  return `${projectId}\u0000${serviceId}\u0000${adapterId}\u0000${provider}\u0000${stableJson(reviewedIdentity)}`;
+}
+
+function observationOrder(left, right) {
+  const identityOrder = observationIdentity(left).localeCompare(observationIdentity(right));
+  if (identityOrder !== 0) return identityOrder;
+  const evaluatedOrder = (evidenceTimestamp(left.freshness.evaluatedAt) ?? Number.NEGATIVE_INFINITY)
+    - (evidenceTimestamp(right.freshness.evaluatedAt) ?? Number.NEGATIVE_INFINITY);
+  if (evaluatedOrder !== 0) return evaluatedOrder;
+  const timeOrder = (evidenceTimestamp(left.freshness.observedAt) ?? Number.NEGATIVE_INFINITY)
+    - (evidenceTimestamp(right.freshness.observedAt) ?? Number.NEGATIVE_INFINITY);
+  if (timeOrder !== 0) return timeOrder;
+  return stableJson(left).localeCompare(stableJson(right));
+}
+
+function newestProviderObservations(observations) {
+  const selected = new Map();
+  for (const observation of [...observations].sort(observationOrder)) {
+    selected.set(observationIdentity(observation), observation);
+  }
+  return [...selected.values()].sort(observationOrder);
+}
+
+function providerFinding(project, service, observation, details) {
+  return finding(project, service, {
+    severity: "medium",
+    uncertainty: "This is a normalized read-only observation. Confirm ownership and intent before changing catalog or provider state.",
+    ...details,
+  });
+}
+
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function reviewedDeploymentIdentity(observation) {
+  const reviewed = observation.identity.reviewedIdentity;
+  if (!reviewed || typeof reviewed !== "object" || Array.isArray(reviewed)) return null;
+  for (const key of ["deploymentIdentity", "resourceId"]) {
+    const value = reviewed[key];
+    if (typeof value === "string" || typeof value === "number") return String(value);
+  }
+  return null;
+}
+
+function reviewedComparableValue(observation, field) {
+  const reviewed = observation.identity.reviewedIdentity;
+  if (!reviewed || typeof reviewed !== "object" || Array.isArray(reviewed)) return null;
+  const value = reviewed[field];
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function providerDriftFindings(project, service, observation, now) {
+  const findings = [];
+  const deploymentResolution = reviewedResolution(service, "deployment", observation, now);
+  const deployment = observation.deployment ?? {};
+  const reviewedIdentity = reviewedDeploymentIdentity(observation);
+  const reviewedServiceUrl = normalizedUrl(reviewedComparableValue(observation, "serviceUrl"));
+  const reviewedCatalogHost = reviewedComparableValue(observation, "catalogHost");
+  const freshnessState = observation.freshness.state;
+
+  if (observation.execution.state !== "succeeded" || freshnessState !== "fresh") {
+    const state = freshnessState === "stale" ? "stale" : "unknown";
+    findings.push(providerFinding(project, service, observation, {
+      check: "provider-evidence",
+      state,
+      evidence: providerEvidenceRef(observation),
+      reason: `The exact ${observation.identity.provider}/${observation.identity.adapterId} binding is ${state}: ${observation.execution.reason}.`,
+      severity: "low",
+    }));
+  }
+
+  if (observation.execution.state === "succeeded" && freshnessState === "fresh"
+      && !deploymentResolution && reviewedIdentity && deployment.identity && deployment.identity !== reviewedIdentity) {
+    findings.push(providerFinding(project, service, observation, {
+      check: "deployment-identity",
+      state: "drift",
+      evidence: providerEvidenceRef(observation, {
+        observed: { expected: reviewedIdentity, actual: deployment.identity },
+      }),
+      reason: `Observed deployment identity ${deployment.identity} differs from reviewed identity ${reviewedIdentity}.`,
+    }));
+  }
+
+  const observedUrl = normalizedUrl(deployment.url);
+  const reviewedUrls = reviewedServiceUrls(service);
+  if (reviewedServiceUrl) reviewedUrls.add(reviewedServiceUrl);
+  if (observation.execution.state === "succeeded" && freshnessState === "fresh"
+      && !deploymentResolution && reviewedServiceUrl && observedUrl && !reviewedUrls.has(observedUrl)) {
+    findings.push(providerFinding(project, service, observation, {
+      check: "deployment-url",
+      state: "drift",
+      evidence: providerEvidenceRef(observation, {
+        observed: { expected: [...reviewedUrls].sort(), actual: deployment.url },
+        url: deployment.url,
+      }),
+      reason: `Observed deployment URL ${deployment.url} is not one of the service URLs reviewed in the catalog.`,
+    }));
+  }
+
+  if (observation.execution.state === "succeeded" && freshnessState === "fresh"
+      && !deploymentResolution && reviewedCatalogHost && deployment.host && deployment.host !== service.host) {
+    findings.push(providerFinding(project, service, observation, {
+      check: "deployment-host",
+      state: "drift",
+      evidence: providerEvidenceRef(observation, {
+        observed: { expected: service.host, actual: deployment.host },
+      }),
+      reason: `Observed deployment host ${deployment.host} differs from reviewed catalog host ${service.host}.`,
+    }));
+  }
+
+  for (const check of ["backup", "restore"]) {
+    const item = providerEvidenceItem(observation, check);
+    const validUntil = evidenceTimestamp(item?.validUntil);
+    if (!item || validUntil === null || validUntil >= now.getTime()) continue;
+    if (reviewedResolution(service, check, { observedAt: item.observedAt }, now)) continue;
+    findings.push(providerFinding(project, service, observation, {
+      check,
+      state: "stale",
+      evidence: providerEvidenceRef(observation, { check }),
+      reason: `Normalized ${check} evidence expired at ${item.validUntil}; the provider observation does not establish current recoverability.`,
+      severity: ["customer-facing", "sensitive"].includes(service.readiness?.profile) ? "high" : "medium",
+    }));
+  }
+
+  if (observation.execution.state === "succeeded" && freshnessState === "fresh"
+      && ["paused", "discovery"].includes(project.lifecycle) && observation.recurringCost?.state === "present"
+      && !reviewedResolution(service, "cost", { observedAt: observation.recurringCost.observedAt }, now)) {
+    findings.push(providerFinding(project, service, observation, {
+      check: "recurring-cost",
+      state: "drift",
+      evidence: providerEvidenceRef(observation, {
+        check: "cost",
+        observed: { projectLifecycle: project.lifecycle, recurringCost: "present" },
+        url: observation.recurringCost.url,
+      }),
+      reason: `The project is ${project.lifecycle}, while the exact reviewed resource reports a recurring cost.`,
+      uncertainty: "A recurring cost does not prove the resource is unused or the charge is wrong; owner review is required.",
+    }));
+  }
+
+  return findings;
+}
+
 function compareFindings(left, right) {
   return SEVERITY_ORDER[left.severity] - SEVERITY_ORDER[right.severity]
     || left.project.localeCompare(right.project)
@@ -137,8 +371,9 @@ function compareFindings(left, right) {
     || STATE_ORDER[left.state] - STATE_ORDER[right.state];
 }
 
-export function reviewPortfolio(sourceCatalog, { now } = {}) {
+export function reviewPortfolio(sourceCatalog, { now, providerEvidence = [] } = {}) {
   const reviewedAt = asDate(now);
+  const normalizedProviderEvidence = providerEvidence.map(validateEvidenceAdapterResult);
   const findings = [];
   let serviceCount = 0;
 
@@ -148,6 +383,16 @@ export function reviewPortfolio(sourceCatalog, { now } = {}) {
       const readinessFindings = profileFindings(project, service, reviewedAt);
       findings.push(...readinessFindings, ...operationalFindings(project, service, readinessFindings, reviewedAt));
     }
+  }
+
+  const projectsById = new Map(sourceCatalog.projects.map(({ manifest }) => [manifest.id, manifest]));
+  let matchedProviderObservations = 0;
+  for (const observation of newestProviderObservations(normalizedProviderEvidence)) {
+    const project = projectsById.get(observation.identity.projectId);
+    const service = project?.services?.find((candidate) => candidate.id === observation.identity.serviceId);
+    if (!project || !service) continue;
+    matchedProviderObservations += 1;
+    findings.push(...providerDriftFindings(project, service, observation, reviewedAt));
   }
   findings.sort(compareFindings);
 
@@ -160,11 +405,15 @@ export function reviewPortfolio(sourceCatalog, { now } = {}) {
       projects: sourceCatalog.projects.length,
       services: serviceCount,
       findings: findings.length,
+      providerEvidence: {
+        received: normalizedProviderEvidence.length,
+        matched: matchedProviderObservations,
+      },
       severities: Object.fromEntries(["high", "medium", "low"].map((severity) => [
         severity,
         findings.filter((item) => item.severity === severity).length,
       ])),
-      states: Object.fromEntries(["missing", "stale", "unknown"].map((state) => [
+      states: Object.fromEntries(["drift", "missing", "stale", "unknown"].map((state) => [
         state,
         findings.filter((item) => item.state === state).length,
       ])),

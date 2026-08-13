@@ -2,7 +2,7 @@
   "manifestVersion": 2,
   "exporterVersion": 1,
   "source": {
-    "commit": "d9645664548c08474d4e4813fb03fb082ea6f959",
+    "commit": "5e856f25c9fed905cf853905ae28f7e7c55d5dcc",
     "state": "clean"
   },
   "files": [
@@ -48,7 +48,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "6a49a91ecb87ae9b205a8e3a99d46eca05feee2d57bc6fdeb0e29fccdab9c0ea"
+      "sha256": "c4b9a5594cf1f9aa13572e6f0355edd13f1d959f4bb7907d18789a22f661f222"
     },
     {
       "path": "CODE_OF_CONDUCT.md",
@@ -64,7 +64,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "c37ffd1a5eed3cb840431dd8b7442d812f901eb962389e1bc251a2f5214066cf"
+      "sha256": "6d017f2a6c7341d499c1f67d263be95d0923a260b7717956eec9b1b7cef75b13"
     },
     {
       "path": "SECURITY.md",
@@ -123,6 +123,10 @@
       "sha256": "8e2969f62cdba6aa084c5ef34b9d4ed09274147651abd55020b5ff0af3f95960"
     },
     {
+      "path": "config/evidence-bindings/example-release.json",
+      "sha256": "5887e4091e88b325a28c9cb18d49f52d8654f093cfc19870b50422e3e6d6f0fe"
+    },
+    {
       "path": "config/readiness-policy.json",
       "sha256": "58ed161017988f305236fbb76fae3475f639d56185865500abe1d013cc336dc6"
     },
@@ -156,11 +160,19 @@
     },
     {
       "path": "docs/APP_PASSPORT.md",
-      "sha256": "cb4833bcfc1e749f8786ba86edf9c9905b62635b0d99e2d93ca2410b68514d9a"
+      "sha256": "9452d3ad255614c51f32a504a21f4320f351387dfeb26409ad0d0d79afd7df76"
     },
     {
       "path": "docs/CONFIGURATION.md",
       "sha256": "4a7ec215ff7daa7a5a97d695c745e24e3889734a953432beba7e6115ded3ffd1"
+    },
+    {
+      "path": "docs/EVIDENCE_ADAPTERS.md",
+      "sha256": "2379f142b5bfe15cc04d964c7c99f219c17830bb0a53649738c90ac13d99d2a6"
+    },
+    {
+      "path": "docs/GITHUB_EVIDENCE_ADAPTERS.md",
+      "sha256": "4569c66f014d7b0eb97743942aeb77b18538d9ba30bf82eae77d05dcb6e941d5"
     },
     {
       "path": "docs/INSTALLATION.md",
@@ -172,7 +184,7 @@
     },
     {
       "path": "docs/PORTFOLIO_REVIEW.md",
-      "sha256": "f66b747debb9ca6f9a21d61afbdc67b45b0c9b42638ed940d2b39c6c995507e1"
+      "sha256": "776f5edd14c2cf44b7ed6b46623a831b534554706e7ba608249e9de745b20cb7"
     },
     {
       "path": "docs/PRIVACY.md",
@@ -205,6 +217,50 @@
     {
       "path": "lib/catalog.ts",
       "sha256": "56bafc88103764e5e6c020d392302c22cef382778db46091552a717ff93d18fa"
+    },
+    {
+      "path": "lib/evidence-adapters.d.mts",
+      "sha256": "e222a703056edbfd64d1a332d82af93d86c815e27a342708a855a3c0cb9c2c2f"
+    },
+    {
+      "path": "lib/evidence-adapters.mjs",
+      "sha256": "a98beaffe97eadb7a79afe635bbb4d7f1396e9944eba5f3492ddd86df734d108"
+    },
+    {
+      "path": "lib/evidence-adapters/providers/github-common.mjs",
+      "sha256": "d873716576470ac1b2f81571e19e20735f9186baef038c387ad9489483fe6053"
+    },
+    {
+      "path": "lib/evidence-adapters/providers/github-deployment.d.mts",
+      "sha256": "51127ac43cd605e48bb08ab02ab0fb6e716fc734c39d05cf4d9ba06acc5b07ad"
+    },
+    {
+      "path": "lib/evidence-adapters/providers/github-deployment.mjs",
+      "sha256": "71b576de2ba826dec28166fd09fdeb1ee19571242d9d5e213c2508a0168dea48"
+    },
+    {
+      "path": "lib/evidence-adapters/providers/github-release-deployment.d.mts",
+      "sha256": "7c313b687c432ef38cc1a57437394a3f75f8e46c2c12ba3e4dbb644b8c23bdf3"
+    },
+    {
+      "path": "lib/evidence-adapters/providers/github-release-deployment.mjs",
+      "sha256": "a2d89d7199ee6c93bb32865764de75c4c167e930129fe9519c4bb2f307423e83"
+    },
+    {
+      "path": "lib/evidence-adapters/providers/github-workflow-monitoring.d.mts",
+      "sha256": "781cd4409c07094e6a8fd64649969b79e6817b2ea6a2784821fd7c3a022a7f62"
+    },
+    {
+      "path": "lib/evidence-adapters/providers/github-workflow-monitoring.mjs",
+      "sha256": "36d0e9dbb0077d3b43a2fffbf4966fcb3667286371f6e559ceba60c61a5a4b69"
+    },
+    {
+      "path": "lib/evidence-adapters/registry.d.mts",
+      "sha256": "6146a49438f6de83f6305f6ae8ca8eaa147a173ce378d2d13b744087a25f9927"
+    },
+    {
+      "path": "lib/evidence-adapters/registry.mjs",
+      "sha256": "f50ecb8b4405fc164b6c2711a79a54dbd9f34a901002ca944ac9085e8316b4f2"
     },
     {
       "path": "lib/mcp-auth.ts",
@@ -240,19 +296,19 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "3e1a14aaec59b7899e535b89186b50dc5fb2a0acfc2ca40d3453d671a9174347"
+      "sha256": "206b391cbac06ba0a81fc30a2f03f228efe4c4c99a7512a119bdb81aa6629a7b"
     },
     {
       "path": "package.json",
-      "sha256": "7dfe3fbf85a39caf793d3d8ff37f39a139f3299dd2785d22a8a66f0b04a5176f"
+      "sha256": "002455ad0d6cdfbbace38d79be99394f9441cb2807254478b1f72429e2aa3f70"
     },
     {
       "path": "plugins/devhub/.codex-plugin/plugin.json",
-      "sha256": "bc07aaa5c43952a205c3f319d2a33e106bdeca73fb9d62b80eba8c97d183628a"
+      "sha256": "ef2bad88b38dbab93bbcb8aec52af7df66a189a7467ff762ecaeaa2377a29129"
     },
     {
       "path": "plugins/devhub/skills/devhub-registry/SKILL.md",
-      "sha256": "d11ac0ed2eaffc253f58cc0cedf31389a49e0b39ebf7be9e328509533afeae0d"
+      "sha256": "20ce93411800cdf8b022f9ffe68922d4c9bda73959f9fdc7f4b8f0b4f4967bdb"
     },
     {
       "path": "plugins/devhub/skills/devhub-registry/agents/openai.yaml",
@@ -312,7 +368,11 @@
     },
     {
       "path": "scripts/devhub.mjs",
-      "sha256": "28ff225c9b1aa2fa5135a8f9ed3a5f84fe2eb70ad1c39cc01f2f01c70dbbe53e"
+      "sha256": "fa0cf6fa657e971d1c40cac3ad10f79a2de75c564e80a6cfec9eb4e101477cc6"
+    },
+    {
+      "path": "scripts/evidence-collection.mjs",
+      "sha256": "5da5198d88702c6db0f3927749e3a8622bc38b99795847f86913112240303d44"
     },
     {
       "path": "scripts/host-inspection.mjs",
@@ -320,7 +380,7 @@
     },
     {
       "path": "scripts/portfolio-review.mjs",
-      "sha256": "4ed34804c2e00c28289a9780abc7d14231a04dd8e51ff9e5f7d0d844c41670d8"
+      "sha256": "030eeab0b9f9824d779caa8b4c3cbca66dae759ac710e98cd3e2283019568769"
     },
     {
       "path": "scripts/reconciliation.mjs",
@@ -328,7 +388,7 @@
     },
     {
       "path": "scripts/release-artifacts.mjs",
-      "sha256": "0f131002ef10ebf1c7518c67d37e70899c4ef51bac709a95301cf572f14482f5"
+      "sha256": "efeb533c436107c4a43e0647bc650d80987c74c42c329a5d6c45af6b8d87d738"
     },
     {
       "path": "scripts/semantic-diff.mjs",
@@ -363,6 +423,34 @@
       "sha256": "394e5eb345cf5fc25f293f2a1b60d4ccee78e904900c51d3902cace1a29dd978"
     },
     {
+      "path": "tests/evidence-adapters-github.test.mjs",
+      "sha256": "34126e2807518ccbe6037abf3d6d71b4f074943c795920a0945ed58764223a5b"
+    },
+    {
+      "path": "tests/evidence-adapters.test.mjs",
+      "sha256": "04ec58bcdf16e7570f32caad4da9929c3e1bba3995dbb2e832446b3b43ad0e71"
+    },
+    {
+      "path": "tests/evidence-collection.test.mjs",
+      "sha256": "a2c46a95870b92f6cd394ad7eafdb4b8e9ee2925030137cec4c0cbf78f6bc589"
+    },
+    {
+      "path": "tests/fixtures/evidence-adapters/changed-deployment-identity.json",
+      "sha256": "ebcf3b0e4cd0ddf08e0f5a0a416c60039ca16451a8e6a32874ff281a252fb4bc"
+    },
+    {
+      "path": "tests/fixtures/evidence-adapters/stale-evidence.json",
+      "sha256": "f774a253e93d1383b40fd0313869284885b4696686c5bec6d8d8eaedf98e704d"
+    },
+    {
+      "path": "tests/fixtures/evidence-adapters/success.json",
+      "sha256": "34d02ae7dba5185573dbbd14453fe289b0d5cc37628fc805f1b88689ed310913"
+    },
+    {
+      "path": "tests/fixtures/evidence-adapters/unavailable-provider.json",
+      "sha256": "3bd728835f6a23c2fc2acea524ee2240a9eb3f47d481058a0b08422e7f6279ca"
+    },
+    {
       "path": "tests/host-inspection.test.mjs",
       "sha256": "a6f6d8be0ee0b6a9d5dc0d059607b96ee70dd4a14f551a5eaf5bd426648053e6"
     },
@@ -372,11 +460,11 @@
     },
     {
       "path": "tests/portfolio-review-cli.test.mjs",
-      "sha256": "a6d14665c7553268aa5e575847d778ed16060a206add1127518570787dcb27e8"
+      "sha256": "d46a69d464b12b189fd9504ae436248ee9a4e4f371af27ec2886ae568c5b75b4"
     },
     {
       "path": "tests/portfolio-review.test.mjs",
-      "sha256": "d69fe980c5b8b8dcd72cb4a2a25b14b6a9adf48cff9ee898624d01de6f4c2aa0"
+      "sha256": "fdbe10c1763e6285c2a16b588b08740ccdd4c9fa859383a5e55c676c45fc8e20"
     },
     {
       "path": "tests/readiness-policy.test.mjs",

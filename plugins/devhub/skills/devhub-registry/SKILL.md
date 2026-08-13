@@ -14,6 +14,13 @@ Treat the configured DevHub instance as the operational map for its owner. Use a
 - For “check drift”: compare repository evidence with the current record and report `in-sync`, `drift`, or `unknown`. Prefer `unknown` over an invented fact.
 - For “is this safe?”, “how production-ready is it?”, or “create an App Passport”: inspect evidence for the selected readiness profile and propose explicit `verified`, `declared`, `missing`, `not-applicable`, or `unknown` checks.
 - For “review everything I shipped” or “what should I fix first?”: use `review-portfolio --json` from an available checkout, treat every result as a catalog evidence question, and prioritize the highest-harm reversible next action. Do not report a percentage or imply that unknown proves a production defect.
+- For “refresh provider evidence”: use `collect-evidence <binding.json> --json`, or pass reviewed binding files to `review-portfolio --evidence-binding`. Never accept a prebuilt normalized result as production evidence.
+
+Collected provider evidence is a transient candidate, not a catalog mutation.
+After review, propose a minimal YAML diff with provenance and freshness; only a
+merged and validated catalog change may make the fact visible through the
+dashboard or MCP. Never describe a successful collection as an already-updated
+App Passport.
 
 ## Find the DevHub instance
 
@@ -56,6 +63,14 @@ Use the service's App Passport as an evidence ledger, not a score guessed from f
 - Prioritize the next action by likely harm and reversibility: exposure and data loss before cost and convenience.
 
 An App Passport does not replace monitoring, backups, a security review, or a deployment system. It makes their presence, absence, source, and freshness inspectable from the same operational map.
+
+Provider bindings live outside project manifests. Before collection, require an
+exact catalog project/service match and an allowlisted adapter. A GitHub binding
+must match the reviewed service repository link when one exists; only services
+without that link may fall back to the reviewed project repository.
+An absent named credential is `unknown`; public anonymous reads are allowed only
+when the binding omits `credentialEnv`. Release evidence proves released source
+identity, not live runtime health.
 
 ## Choose the ownership boundary
 
