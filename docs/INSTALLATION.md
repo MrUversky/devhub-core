@@ -147,3 +147,18 @@ curl --fail --silent --show-error \
 ```
 
 The MCP response must include `serverInfo`. Initialization is read-only.
+
+## Portability & Reporting Evidence
+
+Public alpha operators are encouraged to record real installation evidence beyond the CI test matrix. Use [PORTABILITY_EVIDENCE.md](PORTABILITY_EVIDENCE.md) for a structured evidence collection template and environment metadata guide.
+
+Quick smoke test commands across supported shells:
+
+- **Windows PowerShell**:
+  ```powershell
+  (Invoke-WebRequest -UseBasicParsing http://127.0.0.1:3000/).StatusCode
+  ```
+- **macOS zsh / Linux bash**:
+  ```bash
+  curl --fail --silent --show-error http://127.0.0.1:3000/ >/dev/null
+  ```

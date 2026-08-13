@@ -160,11 +160,15 @@
     },
     {
       "path": "docs/INSTALLATION.md",
-      "sha256": "f06b4ca95d79e192703c0c6e8730b0bf4303536ce80f1c9d1075bc8cd0771fca"
+      "sha256": "a8c93c26bedfa8a314f1b990a75ed24f5e531f71ca5ebe041dfe88730083c3cf"
     },
     {
       "path": "docs/INTEGRATIONS_CODEX.md",
       "sha256": "c6d9675787245dc492e04a547f45188028621138cf4f03ad4b4ac2b822bca65e"
+    },
+    {
+      "path": "docs/PORTABILITY_EVIDENCE.md",
+      "sha256": "f4b77356415fefbd4876513355d4c8d4cd5b12735cf9e72b5c6e909ef7391e00"
     },
     {
       "path": "docs/PRIVACY.md",
