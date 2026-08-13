@@ -1,6 +1,6 @@
 {
   "name": "devhub",
-  "version": "0.6.0-alpha.1",
+  "version": "0.7.0-alpha.1",
   "description": "Reconcile projects, services and operational readiness with a self-hosted DevHub registry.",
   "author": {
     "name": "DevHub contributors"
@@ -21,7 +21,8 @@
       "Where does this service run and how do I open it?",
       "Check DevHub for drift and propose a safe fix.",
       "Inspect this app's operational readiness and propose an App Passport.",
-      "Review my DevHub portfolio and tell me what to inspect first."
+      "Review my DevHub portfolio and tell me what to inspect first.",
+      "Refresh the reviewed provider evidence for this service."
     ]
   }
 }

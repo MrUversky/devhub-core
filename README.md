@@ -45,6 +45,21 @@ recover its operational context in under 30 seconds. DevHub is not a metrics
 stack or a universal process supervisor; when trustworthy evidence is missing,
 it reports `unknown` instead of inventing a green status.
 
+## Refresh reviewed provider evidence
+
+DevHub v0.7 includes narrow read-only GitHub adapters. Start from the fictional
+`config/evidence-bindings/example-release.json`, replace its identities with a
+repository and service already reviewed in your catalog, then run:
+
+```bash
+npm run devhub -- collect-evidence config/evidence-bindings/example-release.json --json
+npm run devhub -- review-portfolio --json \
+  --evidence-binding config/evidence-bindings/example-release.json
+```
+
+The result is a candidate, not an automatic catalog update. Review a minimal
+YAML diff before dashboard or MCP can show the new evidence.
+
 ## Quick start with Docker
 
 Requirements: Docker Engine with Compose v2.
@@ -111,6 +126,8 @@ private or the source repository is shared or external.
 See [Installation](docs/INSTALLATION.md),
 [Configuration](docs/CONFIGURATION.md), [App Passport](docs/APP_PASSPORT.md),
 [Portfolio review](docs/PORTFOLIO_REVIEW.md),
+[Read-only evidence adapters](docs/EVIDENCE_ADAPTERS.md),
+[GitHub evidence adapters](docs/GITHUB_EVIDENCE_ADAPTERS.md),
 and [Privacy](docs/PRIVACY.md).
 
 Codex users can install the portable workflow skill and connect it to their

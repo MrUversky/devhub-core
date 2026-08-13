@@ -6,6 +6,12 @@ import process from "node:process";
 import { promisify } from "node:util";
 import { collectDoctorFindings, readSourceCatalog } from "./catalog-tools.mjs";
 import {
+  collectEvidenceBindings,
+  EvidenceCollectionError,
+  formatEvidenceCollection,
+  readEvidenceBindingDocument,
+} from "./evidence-collection.mjs";
+import {
   CatalogInitError,
   formatCatalogInit,
   initializeCatalog,
@@ -47,7 +53,8 @@ Usage:
   npm run devhub -- register <project-directory>
   npm run devhub -- validate [--check]
   npm run devhub -- doctor [--json]
-  npm run devhub -- review-portfolio [--json]
+  npm run devhub -- collect-evidence <binding.json> [--json]
+  npm run devhub -- review-portfolio [--json] [--evidence-binding <binding.json> ...]
   npm run devhub -- inspect-host [host-id] [--json]
   npm run devhub -- diff <project-directory> [--json]
   npm run devhub -- reconcile <project-directory> [--json] [--apply]
@@ -59,7 +66,9 @@ propose-overlay prints an evidence-backed candidate without modifying the projec
 register copies that manifest into DevHub's reviewed central catalog.
 validate rebuilds the catalog; --check verifies generated files without writing.
 doctor reports actionable catalog debt without changing files.
-review-portfolio builds an evidence-backed readiness and recovery queue without scanning or changing anything.
+collect-evidence refreshes exact reviewed provider bindings without changing the catalog or provider.
+review-portfolio builds an evidence-backed readiness, recovery and provider-drift queue without scanning or changing anything.
+--evidence-binding is repeatable and collects only through registered read-only adapters.
 inspect-host performs one-shot read-only matching against reviewed local runtime evidence.
 diff reports field-level semantic drift; exit 0 means clean, 2 drift and 3 invalid.
 reconcile is a reviewed dry-run plan by default. --apply explicitly refreshes an eligible native record.`);
@@ -87,6 +96,24 @@ function printDoctor(findings) {
   const errors = findings.filter((finding) => finding.severity === "error").length;
   const warnings = findings.length - errors;
   console.log(`DevHub doctor: ${errors} errors, ${warnings} warnings.`);
+}
+
+function optionValues(argumentsList, option) {
+  const values = [];
+  for (let index = 0; index < argumentsList.length; index += 1) {
+    const argument = argumentsList[index];
+    if (argument.startsWith(`${option}=`)) {
+      const value = argument.slice(option.length + 1);
+      if (!value) throw new Error(`${option} needs a file path`);
+      values.push(value);
+    } else if (argument === option) {
+      const value = argumentsList[index + 1];
+      if (!value || value.startsWith("--")) throw new Error(`${option} needs a file path`);
+      values.push(value);
+      index += 1;
+    }
+  }
+  return values;
 }
 
 try {
@@ -159,9 +186,24 @@ if (!command || command === "help" || command === "--help") {
   if (json) console.log(JSON.stringify({ version: 1, command: "doctor", readOnly: true, runtimeHostId: currentHostId, findings }, null, 2));
   else printDoctor(findings);
   if (findings.some((finding) => finding.severity === "error")) process.exitCode = 1;
+} else if (command === "collect-evidence") {
+  if (!rawTarget) throw new EvidenceCollectionError("binding-required", "collect-evidence needs a binding JSON file");
+  const sourceCatalog = await readSourceCatalog(root, { paths });
+  const bindings = await readEvidenceBindingDocument(target);
+  const collection = await collectEvidenceBindings(sourceCatalog, bindings);
+  if (json) console.log(JSON.stringify(collection, null, 2));
+  else console.log(formatEvidenceCollection(collection));
 } else if (command === "review-portfolio") {
   const sourceCatalog = await readSourceCatalog(root, { paths });
-  const review = reviewPortfolio(sourceCatalog);
+  if (optionValues(args, "--evidence-fixture").length) {
+    throw new EvidenceCollectionError("unsupported-evidence-input", "--evidence-fixture is test-only and is not accepted by the production CLI");
+  }
+  const bindingPaths = optionValues(args, "--evidence-binding");
+  const bindingGroups = await Promise.all(bindingPaths.map((filename) => readEvidenceBindingDocument(path.resolve(filename))));
+  const providerEvidence = bindingGroups.length
+    ? (await collectEvidenceBindings(sourceCatalog, bindingGroups.flat())).results
+    : [];
+  const review = reviewPortfolio(sourceCatalog, { providerEvidence });
   if (json) console.log(JSON.stringify(review, null, 2));
   else console.log(formatPortfolioReview(review));
 } else if (command === "inspect-host") {
@@ -205,7 +247,7 @@ if (!command || command === "help" || command === "--help") {
   process.exitCode = 1;
 }
 } catch (error) {
-  const expected = error instanceof ReconciliationApplyError || error instanceof CatalogInitError;
+  const expected = error instanceof ReconciliationApplyError || error instanceof CatalogInitError || error instanceof EvidenceCollectionError;
   const failure = {
     version: 2,
     command: command ?? "unknown",

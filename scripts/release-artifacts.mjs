@@ -4,14 +4,39 @@ import {
   cp, lstat, mkdir, mkdtemp, readFile, readdir, realpath, rename, rmdir, rm, writeFile,
 } from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
 import { gunzipSync, gzipSync } from "node:zlib";
 import { verifyPublicManifest } from "./verify-public-manifest.mjs";
 
-const execFileAsync = promisify(execFile);
 const manifestName = "PUBLIC_EXPORT_MANIFEST.json";
 const evidenceName = "RELEASE-EVIDENCE.json";
 const checksumsName = "SHA256SUMS";
+
+function execFileWithDeadline(file, args, options, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const child = execFile(file, args, options, (error, stdout, stderr) => {
+      clearTimeout(timer);
+      if (settled) return;
+      settled = true;
+      if (error) {
+        error.stdout = stdout;
+        error.stderr = stderr;
+        reject(error);
+      } else {
+        resolve({ stdout, stderr });
+      }
+    });
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      child.kill("SIGTERM");
+      const error = new Error(`${file} exceeded its ${timeoutMs}ms deadline.`);
+      error.code = "ETIMEDOUT";
+      reject(error);
+    }, timeoutMs);
+    timer.unref();
+  });
+}
 
 function compareCodepoints(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
@@ -107,10 +132,11 @@ async function createSourceArchive(snapshot, archiveRoot, relativeFiles) {
 }
 
 async function createNormalizedSbom(snapshot, packageDocument) {
-  const { stdout } = await execFileAsync(
+  const { stdout } = await execFileWithDeadline(
     "npm",
     ["sbom", "--package-lock-only", "--omit=dev", "--sbom-format=cyclonedx", "--sbom-type=application"],
-    { cwd: snapshot, encoding: "utf8", maxBuffer: 40 * 1024 * 1024, timeout: 5 * 60 * 1000 },
+    { cwd: snapshot, encoding: "utf8", maxBuffer: 40 * 1024 * 1024 },
+    5 * 60 * 1000,
   );
   const sbom = JSON.parse(stdout);
   if (sbom.bomFormat !== "CycloneDX" || sbom.specVersion !== "1.5" || !sbom.metadata?.component) {

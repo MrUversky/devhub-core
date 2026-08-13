@@ -1,0 +1,17 @@
+{
+  "status": "success",
+  "observedIdentity": {
+    "repository": "example/app",
+    "environment": "production",
+    "deploymentId": 99
+  },
+  "observedAt": "2026-08-13T10:00:00.000Z",
+  "evidence": [
+    {
+      "id": "provider-deployment",
+      "check": "deployment",
+      "state": "verified",
+      "note": "A different deployment identity was returned."
+    }
+  ]
+}

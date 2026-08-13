@@ -126,6 +126,12 @@ remain responsible for scanning, monitoring, logs, billing and deployment.
 DevHub stores only the reviewed result, source and freshness needed to explain
 the overall operating picture.
 
+All provider modules must pass through the shared
+[read-only evidence adapter contract](EVIDENCE_ADAPTERS.md). That boundary
+requires an exact reviewed project/service identity, resolves credentials only
+from external environment configuration, normalizes uncached provider failures
+to `unknown` and keeps stale last-known evidence visibly stale.
+
 ## Explicit non-goals
 
 - No universal readiness score or certification.
