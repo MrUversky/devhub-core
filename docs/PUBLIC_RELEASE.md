@@ -10,6 +10,11 @@ A trustworthy public release is produced from a public-safe source snapshot,
 not by changing the visibility of a private operational repository. The
 snapshot must contain fictional catalog data and fresh Git history.
 
+The generated catalog identifies itself as `Public demo` and contains an empty
+connection snapshot. A self-hosted operational installation identifies itself
+as `Private workspace` and may project only redacted state from its own
+reviewed profiles.
+
 Before using an alpha release, verify its tag or commit, review release notes
 and run the included validation and test commands. Container images or package
 registry artifacts are supported only when explicitly linked from that
@@ -33,10 +38,20 @@ npm run release:evidence -- --output ../devhub-release-evidence
 npm run release:verify -- ../devhub-release-evidence
 ```
 
-The output contains a deterministic source archive, normalized CycloneDX SBOM,
-machine-readable provenance and `SHA256SUMS`. The archive verifier reads its
-embedded public manifest and rejects any extra, missing or changed package file.
+The output contains a deterministic source archive, an npm-free CLI runtime,
+the standalone user installer, a normalized CycloneDX SBOM, machine-readable
+exact-commit provenance and `SHA256SUMS`. The verifier reads the embedded
+public and runtime manifests, rejects any extra, missing or changed package
+file, and proves that the runtime contains no catalog or connection profile.
 Generate the bundle twice in CI and compare it byte-for-byte before upload.
+
+`config/release-intent.json` is the one committed application-release
+declaration. It must match `package.json` and `package-lock.json`; the verifier
+also requires the source and CLI archives, SBOM, versioned filenames and
+`RELEASE-EVIDENCE.json` to carry that same version. The portable Codex plugin
+has its own manifest version and may advance independently. These checks create
+candidate evidence only: a maintainer still reviews the final archive and
+manually approves any tag or release.
 
 ## Compatibility surfaces
 
@@ -71,6 +86,15 @@ remain loopback-bound by default. The Dockerfile requires the exported
 `.devhub-public-snapshot` marker and must never be built from a private
 operational checkout.
 
+RC candidates additionally follow [RC clean-room release gate](RC_RELEASE_GATE.md),
+including exact per-platform evidence and explicit Windows limitations.
+
+Sites deployments follow the same boundary: build and package only from this
+verified public snapshot. Add instance-specific `.openai/hosting.json`
+metadata only inside a temporary deployment staging directory; it is not part
+of the portable source artifact. After publishing, scan the live response for
+private fingerprints instead of trusting the local archive alone.
+
 Privacy scanning, package allowlisting and `npm audit --omit=dev
 --audit-level=high` are blocking gates. Registry errors, unsupported artifact
 formats and unavailable audit tooling fail the release rather than being
@@ -79,9 +103,12 @@ a tag or public release automatically.
 
 ## Upgrade and rollback
 
-Back up the catalog before upgrading. Build and validate a candidate release
-separately, then switch the running version only after its dashboard and MCP
-checks pass. Keep the previous verified source or image available for rollback.
+Back up the catalog before upgrading. A user-wide CLI upgrade installs a newer
+pinned runtime and changes the active pointer only after checksum, manifest and
+workflow smoke checks pass. `devhub-install rollback --version <VERSION>`
+reactivates a retained runtime, and `devhub-install uninstall` preserves the
+external catalog and configuration by default. Dashboard/server releases still
+switch only after their dashboard and MCP checks pass.
 
 Schema changes that cannot read the previous version require an explicit
 migration tool and release-note warning.

@@ -3,7 +3,7 @@ id: example-app
 title: Example App
 registration: native
 aliases: [Demo application]
-description: Fictional application showing local and managed services.
+description: Application with local and managed services.
 lifecycle: active
 kind: product
 repository: example/example-app
@@ -11,6 +11,50 @@ tags: [demo, web]
 workspaces:
   - host: developer-laptop
     path: /workspace/example-app
+readinessDefaults:
+  profile: personal
+  owner: Example product owner
+  dataClassification: internal
+  costModel: free
+stewards:
+  - id: example-product-team
+    name: Example product team
+    kind: team
+    source: operator
+    observedAt: 2026-08-13T00:00:00Z
+    validUntil: 2027-08-13T00:00:00Z
+  - id: example-founder
+    name: Example founder
+    kind: person
+    source: operator
+    observedAt: 2026-08-13T00:00:00Z
+    validUntil: 2027-08-13T00:00:00Z
+stewardshipDefaults:
+  accountableOwner: example-founder
+  operator: example-product-team
+  billingOwner: example-founder
+  credentialOwner: example-product-team
+access:
+  - id: repository-access
+    kind: repository
+    subject: example/example-app
+    access: yes
+    source: operator
+    note: The product team reviewed repository access separately from ownership.
+    observedAt: 2026-08-13T00:00:00Z
+credentials:
+  - id: example-mail-api
+    provider: Example Mail
+    purpose: Send transactional email
+    secretRef:
+      kind: environment
+      locator: EXAMPLE_MAIL_API_KEY
+    consumers: [production-api]
+    owner: example-product-team
+    payer: example-founder
+    source: operator
+    lastVerifiedAt: 2026-08-13T00:00:00Z
+    rotationDueAt: 2027-02-13T00:00:00Z
 services:
   - id: local-console
     name: Local console
@@ -37,7 +81,7 @@ services:
       timeoutMs: 3000
     reported:
       state: stopped
-      note: Start this fictional service only when the demo needs it.
+      note: Start this service only when the local console is needed.
     commands:
       start: npm run dev
       logs: npm run logs
@@ -71,7 +115,6 @@ services:
       note: Documentation-only endpoint reserved by example.test.
     readiness:
       profile: customer-facing
-      owner: Example product owner
       dataClassification: personal
       costModel: metered
       deployment:
@@ -87,7 +130,7 @@ services:
           criticality: required
           provider: Example Database
           url: https://console.example.test/example-app/database
-          note: Stores fictional customer records for this demo.
+          note: Stores customer records for the production API.
         - id: email-api
           kind: external-api
           name: Transactional email API
@@ -95,20 +138,29 @@ services:
           provider: Example Mail
           url: https://status.example.test/mail
       evidence:
+        - id: ownership-attestation
+          check: ownership
+          state: declared
+          source: operator
+          note: The product owner reviewed the production ownership boundary.
+          observedAt: 2026-08-13T00:00:00Z
+          validUntil: 2026-11-13T00:00:00Z
         - id: monitoring-review
           check: monitoring
           state: declared
           source: operator
-          note: The fictional managed provider is declared as the monitoring owner; no live integration is connected.
+          note: The managed provider is declared as the monitoring owner; no live integration is connected.
           observedAt: 2026-08-13T00:00:00Z
         - id: restore-review
           check: restore
           state: unknown
           source: catalog
-          note: No reviewed restore exercise is registered for this fictional API.
+          note: No reviewed restore exercise is registered for this API.
         - id: cost-boundary
           check: cost
           state: declared
           source: operator
-          note: Billing belongs to the fictional managed provider account.
+          note: Billing belongs to the managed provider account.
           url: https://billing.example.test/example-app
+    stewardship:
+      operator: example-product-team

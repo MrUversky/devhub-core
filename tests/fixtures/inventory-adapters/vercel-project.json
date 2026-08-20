@@ -1,0 +1,26 @@
+{
+  "id": "prj_FictionalPortfolioApp",
+  "name": "fictional-portfolio-app",
+  "targets": {
+    "production": {
+      "id": "dpl_FictionalProduction01",
+      "url": "fictional-production.vercel.app",
+      "alias": [
+        "fictional-portfolio.vercel.app"
+      ],
+      "createdAt": 1786608000000,
+      "target": "production",
+      "readyState": "READY",
+      "meta": {
+        "githubCommitSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "privateValue": "discard-this-provider-field"
+      }
+    }
+  },
+  "environmentVariables": [
+    {
+      "key": "PRIVATE_VALUE",
+      "value": "discard-this-provider-secret"
+    }
+  ]
+}

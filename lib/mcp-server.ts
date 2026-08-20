@@ -60,7 +60,7 @@ const passportDependencySchema = z.object({
 });
 
 const readinessSchema = z.object({
-  profile: z.enum(["personal", "internal", "customer-facing", "sensitive"]),
+  profile: z.enum(["personal", "internal", "customer-facing", "sensitive"]).optional(),
   owner: z.string().optional(),
   dataClassification: z.enum(["none", "internal", "personal", "sensitive", "regulated", "unknown"]).optional(),
   costModel: z.enum(["free", "fixed", "metered", "unknown"]).optional(),
@@ -73,6 +73,26 @@ const readinessSchema = z.object({
   }).optional(),
   dependencies: z.array(passportDependencySchema).optional(),
   evidence: z.array(readinessEvidenceSchema),
+});
+
+const readinessFieldProvenanceSchema = z.enum(["service", "project", "absent"]);
+const readinessContextSchema = z.object({
+  fields: z.object({
+    profile: z.object({
+      value: z.enum(["personal", "internal", "customer-facing", "sensitive"]).nullable(),
+      provenance: readinessFieldProvenanceSchema,
+    }),
+    owner: z.object({ value: z.string().nullable(), provenance: readinessFieldProvenanceSchema }),
+    dataClassification: z.object({
+      value: z.enum(["none", "internal", "personal", "sensitive", "regulated", "unknown"]).nullable(),
+      provenance: readinessFieldProvenanceSchema,
+    }),
+    costModel: z.object({
+      value: z.enum(["free", "fixed", "metered", "unknown"]).nullable(),
+      provenance: readinessFieldProvenanceSchema,
+    }),
+  }),
+  evidenceProvenance: z.enum(["service", "absent"]),
 });
 
 const readinessAssessmentItemSchema = z.object({
@@ -118,6 +138,7 @@ const serviceSummarySchema = z.object({
   endpoint: serviceEndpointSchema.nullable(),
   selectedEndpoint: selectedEndpointSchema.nullable(),
   readiness: readinessSchema.nullable(),
+  readinessContext: readinessContextSchema,
   readinessAssessment: readinessAssessmentSchema,
   links: z.array(serviceLinkSchema),
   hasProbe: z.boolean(),
@@ -146,6 +167,9 @@ const statusSchema = z.object({
   latencyMs: z.number().optional(),
   httpStatus: z.number().optional(),
   note: z.string().optional(),
+  ageMs: z.number().nonnegative().optional(),
+  freshness: z.enum(["fresh", "stale"]).optional(),
+  refreshAfter: z.string().optional(),
 });
 
 function result(value: unknown) {
@@ -199,7 +223,7 @@ export function createDevHubMcpServer() {
       host: z.object({
         id,
         name: z.string(),
-        kind: z.enum(["mac", "linux", "cloud"]),
+        kind: z.enum(["mac", "windows", "linux", "cloud"]),
         location: z.enum(["local", "remote", "cloud"]),
         tailscaleName: z.string().optional(),
         tailscaleIPv4: z.string().optional(),
@@ -225,7 +249,7 @@ export function createDevHubMcpServer() {
 
   server.registerTool("get_status", {
     title: "Get service status",
-    description: "Run only reviewed catalog health probes, optionally scoped to a project or service. Caller-provided URLs are not accepted.",
+    description: "Read centrally cached status for reviewed catalog services, refreshing only expired reviewed probes. Caller-provided URLs are not accepted.",
     inputSchema: z.object({
       projectId: id.optional(),
       serviceId: id.optional(),

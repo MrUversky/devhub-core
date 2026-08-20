@@ -1,0 +1,13 @@
+{
+  "projects": [
+    {
+      "id": "prj_FictionalPortfolioApp",
+      "name": "fictional-portfolio-app",
+      "framework": "nextjs",
+      "env": [{ "key": "PRIVATE_VALUE", "value": "vercel-secret-shaped-project-value" }],
+      "link": { "repo": "private/repository" }
+    }
+  ],
+  "pagination": { "count": 1, "next": null, "prev": null },
+  "rawSecret": "vercel-secret-shaped-project-page-value"
+}

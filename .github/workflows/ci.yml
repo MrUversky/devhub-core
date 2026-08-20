@@ -44,6 +44,20 @@ jobs:
       - run: npm run devhub -- doctor --json
       - run: npm audit --omit=dev --audit-level=high
 
+  windows-cli-paths:
+    name: CLI and paths only (Windows, Node 22; no service installer claim)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm run artifact:verify
+      - run: npm ci
+      - run: node --test tests/windows-cli-paths.test.mjs
+
   release-evidence:
     name: Deterministic checksums and SBOM
     runs-on: ubuntu-latest

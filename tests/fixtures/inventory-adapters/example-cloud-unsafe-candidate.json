@@ -1,0 +1,11 @@
+{
+  "provider": "example-cloud",
+  "resourceType": "project",
+  "resourceId": "unsafe-extension-project",
+  "name": "Unsafe extension project",
+  "urls": [],
+  "rawSnapshot": {
+    "opaque": "provider-specific-payload"
+  },
+  "catalogProjectId": "provider-must-not-decide-this"
+}

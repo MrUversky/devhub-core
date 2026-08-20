@@ -1,9 +1,11 @@
-import { readFile, readdir, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { parse } from "yaml";
 import { validateHostsDocument, validateProjectDocument } from "./catalog-validation.mjs";
-import { resolveDevHubPaths } from "./devhub-config.mjs";
+import { resolveDevHubPaths, resolveInstancePresentation } from "./devhub-config.mjs";
+import { catalogForPresentation } from "../lib/catalog-presentation.mjs";
+import { createConnectionSnapshot } from "../lib/connection-snapshot.mjs";
 
 const paths = resolveDevHubPaths(process.cwd(), process.env);
 
@@ -40,8 +42,23 @@ for (const file of projectFiles) {
 }
 
 projects.sort((left, right) => left.title.localeCompare(right.title));
-const catalog = { version: 1, hosts: hostsDocument.hosts, projects };
-const serialized = `${JSON.stringify(catalog, null, 2)}\n`;
+let connectionProfileDocument;
+try {
+  connectionProfileDocument = JSON.parse(await readFile(paths.connectionProfilesPath, "utf8"));
+} catch (error) {
+  if (error?.code !== "ENOENT") throw error;
+}
+const connections = createConnectionSnapshot(connectionProfileDocument);
+let publicSnapshot = false;
+try {
+  await access(path.join(paths.root, ".devhub-public-snapshot"));
+  publicSnapshot = true;
+} catch (error) {
+  if (error?.code !== "ENOENT") throw error;
+}
+const instance = resolveInstancePresentation(process.env, { publicSnapshot });
+const catalog = { version: 1, instance, hosts: hostsDocument.hosts, projects, connections };
+const serialized = `${JSON.stringify(catalogForPresentation(catalog), null, 2)}\n`;
 const outputFiles = paths.generatedOutputs;
 
 if (process.env.DEVHUB_CATALOG_CHECK === "1") {
@@ -56,7 +73,10 @@ if (process.env.DEVHUB_CATALOG_CHECK === "1") {
     if (existing !== serialized) fail(`${path.relative(paths.root, outputFile)} is stale; run npm run devhub -- validate`);
   }
 } else {
-  await Promise.all(outputFiles.map((outputFile) => writeFile(outputFile, serialized)));
+  await Promise.all(outputFiles.map(async (outputFile) => {
+    await mkdir(path.dirname(outputFile), { recursive: true });
+    await writeFile(outputFile, serialized);
+  }));
 }
 
 console.log(`catalog: ${projects.length} projects, ${projects.reduce((sum, project) => sum + project.services.length, 0)} services${process.env.DEVHUB_CATALOG_CHECK === "1" ? " (current)" : ""}`);

@@ -1,0 +1,6 @@
+{
+  "id": "team_fictionalstudio",
+  "slug": "fictional-studio",
+  "members": [{ "email": "private-member@fictional.invalid" }],
+  "secret": "vercel-secret-shaped-team-value"
+}

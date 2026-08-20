@@ -1,0 +1,29 @@
+{
+  "workspaceRef": "paper-team",
+  "requestCursor": null,
+  "capturedAt": "2026-08-13T12:00:00.000Z",
+  "nextCursor": null,
+  "accountLabel": "Fictional Paper Team",
+  "billingContact": "Unknown by design",
+  "folios": [
+    {
+      "folioRef": "folio-weather",
+      "caption": "Weather folio",
+      "lanes": [
+        {
+          "laneRef": "lane-live",
+          "label": "production",
+          "cells": [
+            {
+              "cellRef": "cell-forecast",
+              "caption": "Forecast edge cell",
+              "phase": "warm",
+              "region": "fictional-north-1",
+              "entrypoints": ["https://forecast.papercrane.example.test/"]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

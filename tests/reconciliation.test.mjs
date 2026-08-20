@@ -200,6 +200,80 @@ test("reconciliation produces a strict reviewed field-level plan", async () => {
   }
 });
 
+test("native reconciliation preserves reviewed stewardship metadata without inventing it", async () => {
+  const fixture = await createFixture();
+  try {
+    const nativePath = path.join(fixture.target, ".devhub/project.yaml");
+    const stewardship = `stewards:\n  - id: product-team\n    name: Product team\n    kind: team\n    source: operator\nstewardshipDefaults:\n  accountableOwner: product-team\n  operator: product-team\ncredentials:\n  - id: example-api\n    provider: Example Provider\n    purpose: Fictional API access\n    secretRef:\n      kind: environment\n      locator: EXAMPLE_API_KEY\n    consumers: [web]\n    owner: product-team\n    source: operator\n`;
+    const original = await readFile(nativePath, "utf8");
+    await writeFile(nativePath, original.replace("services:\n", `${stewardship}services:\n`));
+
+    const plan = await createReconciliationPlan(fixture.root, fixture.target, "example-laptop");
+    assert.equal(plan.status, "drift");
+    assert.equal(plan.readOnly, true);
+    assert.ok(plan.diff.some((item) => item.path === "stewards" && item.state === "added"));
+    assert.ok(plan.diff.some((item) => item.path === "stewardshipDefaults" && item.state === "added"));
+    assert.ok(plan.diff.some((item) => item.path === "credentials" && item.state === "added"));
+    const serialized = JSON.stringify(plan);
+    const human = formatReconciliation(plan);
+    assert.equal(serialized.includes("EXAMPLE_API_KEY"), false);
+    assert.equal(human.includes("EXAMPLE_API_KEY"), false);
+    assert.match(serialized, /configured/);
+    assert.match(human, /configured/);
+    assert.equal((await readFile(path.join(fixture.root, "catalog/projects/example-app.yaml"), "utf8")).includes("stewardshipDefaults"), false);
+  } finally {
+    await rm(fixture.temporary, { recursive: true, force: true });
+  }
+});
+
+test("locator-only reconciliation drift never exposes the field or either locator", async () => {
+  const fixture = await createFixture();
+  try {
+    const catalogPath = path.join(fixture.root, "catalog/projects/example-app.yaml");
+    const nativePath = path.join(fixture.target, ".devhub/project.yaml");
+    const stewardship = (locator) => `stewards:\n  - id: product-team\n    name: Product team\n    kind: team\n    source: operator\ncredentials:\n  - id: example-api\n    provider: Example Provider\n    purpose: Fictional API access\n    secretRef:\n      kind: environment\n      locator: ${locator}\n    consumers: [web]\n    owner: product-team\n    source: operator\n`;
+    const catalog = await readFile(catalogPath, "utf8");
+    const native = await readFile(nativePath, "utf8");
+    await writeFile(catalogPath, catalog.replace("services:\n", `${stewardship("CATALOG_API_KEY")}services:\n`));
+    await writeFile(nativePath, native.replace("services:\n", `${stewardship("NATIVE_API_KEY")}services:\n`));
+    const plan = await createReconciliationPlan(fixture.root, fixture.target, "example-laptop");
+    const serialized = JSON.stringify(plan);
+    const human = formatReconciliation(plan);
+    assert.equal(plan.status, "drift");
+    assert.equal(serialized.includes("CATALOG_API_KEY"), false);
+    assert.equal(serialized.includes("NATIVE_API_KEY"), false);
+    assert.equal(serialized.includes("secretRef.locator"), false);
+    assert.equal(human.includes("CATALOG_API_KEY"), false);
+    assert.equal(human.includes("NATIVE_API_KEY"), false);
+    assert.equal(human.includes("secretRef.locator"), false);
+    assert.ok(plan.diff.some((item) => item.path.endsWith("secretRef") && item.state === "changed"));
+  } finally {
+    await rm(fixture.temporary, { recursive: true, force: true });
+  }
+});
+
+test("overlay proposal fails closed instead of serializing reviewed credential locators", async () => {
+  const fixture = await createFixture({ catalogRegistration: "overlay", noNative: true });
+  try {
+    const catalogPath = path.join(fixture.root, "catalog/projects/example-app.yaml");
+    const reviewed = (await readFile(catalogPath, "utf8")).replace(
+      "services:\n",
+      `stewards:\n  - id: team\n    name: Example team\n    kind: team\n    source: operator\ncredentials:\n  - id: example-api\n    provider: Example Provider\n    purpose: Fictional API access\n    secretRef:\n      kind: environment\n      locator: EXAMPLE_API_KEY\n    consumers: [web]\n    owner: team\n    source: operator\nservices:\n`,
+    ).replace(
+      "services:\n",
+      `workspaces:\n  - host: example-laptop\n    path: ${JSON.stringify(fixture.target)}\nservices:\n`,
+    );
+    await writeFile(catalogPath, reviewed);
+    const proposal = await createOverlayProposal(fixture.root, fixture.target, "example-laptop");
+    assert.equal(proposal.status, "invalid");
+    assert.equal(proposal.error.code, "credential-bearing-overlay-proposal");
+    assert.equal(JSON.stringify(proposal).includes("EXAMPLE_API_KEY"), false);
+    assert.equal(proposal.candidate, null);
+  } finally {
+    await rm(fixture.temporary, { recursive: true, force: true });
+  }
+});
+
 test("explicit native apply refreshes generated output and is idempotent", async () => {
   const fixture = await createFixture({ catalogTitle: "Old title", nativeTitle: "Reviewed title" });
   try {

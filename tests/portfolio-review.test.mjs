@@ -200,6 +200,191 @@ test("services without a passport remain honest unknowns", () => {
   assert.equal(review.summary.states.unknown, review.findings.length);
 });
 
+test("project readiness defaults provide context but never inherit service evidence", () => {
+  const review = reviewPortfolio(catalog([service({
+    mode: "on-demand",
+    commands: { start: "npm run dev", logs: "npm run logs" },
+  })], {
+    readinessDefaults: {
+      profile: "personal",
+      owner: "Product owner",
+      dataClassification: "internal",
+      costModel: "fixed",
+    },
+  }), { now: "2026-08-13T00:00:00.000Z" });
+
+  assert.equal(review.findings.some((item) => item.check === "readiness-profile"), false);
+  assert.equal(review.findings.filter((item) => item.check === "ownership").length, 1);
+  const ownership = review.findings.find((item) => item.check === "ownership");
+  assert.equal(ownership.state, "unknown");
+  assert.equal(ownership.evidence, null);
+  assert.match(ownership.reason, /inherited from the project.*no service-specific ownership evidence/);
+  assert.deepEqual(
+    review.findings.map((item) => item.check).sort(),
+    ["backup", "cost", "deployment", "ownership", "restore", "rollback"],
+  );
+  assert.ok(review.findings.every((item) => item.evidence === null));
+});
+
+test("guardian asks evidence-backed stewardship questions without inferring access or deletion", () => {
+  const review = reviewPortfolio(catalog([service({
+    mode: "managed",
+    commands: { logs: "npm run logs" },
+  })], {
+    stewards: [{
+      id: "founder",
+      name: "Example founder",
+      kind: "person",
+      source: "operator",
+      observedAt: "2026-08-01T00:00:00Z",
+      validUntil: "2027-01-01T00:00:00Z",
+    }],
+    stewardshipDefaults: {
+      accountableOwner: "founder",
+      operator: "founder",
+      billingOwner: "founder",
+      credentialOwner: "founder",
+    },
+    access: [{
+      id: "repository-access",
+      kind: "repository",
+      subject: "example/project",
+      access: "yes",
+      source: "operator",
+      note: "Repository access only.",
+    }],
+    credentials: [{
+      id: "ai-api",
+      provider: "Example AI",
+      purpose: "Inference",
+      secretRef: { kind: "environment", locator: "EXAMPLE_AI_API_KEY" },
+      consumers: ["web"],
+      owner: "founder",
+      source: "operator",
+      lastVerifiedAt: "2026-07-01T00:00:00Z",
+      rotationDueAt: "2026-08-01T00:00:00Z",
+    }],
+  }), { now: "2026-08-13T00:00:00Z" });
+
+  const concentration = review.findings.find((item) => item.check === "stewardship-single-owner");
+  assert.equal(concentration.state, "unknown");
+  assert.match(concentration.uncertainty, /not proof.*provider access/i);
+  const payer = review.findings.find((item) => item.check === "credential-payer");
+  assert.equal(payer.evidence.secretRef.locator, undefined);
+  assert.deepEqual(payer.evidence.secretRef, { kind: "environment", configured: true });
+  assert.match(payer.reason, /no current reviewed payer/);
+  assert.ok(review.findings.some((item) => item.check === "credential-rotation" && item.state === "stale"));
+  assert.ok(review.findings.filter((item) => item.check.startsWith("credential-") || item.check.startsWith("stewardship-"))
+    .every((item) => !/delete|revoke/i.test(item.recommendedNextAction)));
+});
+
+test("guardian reports orphaned credential references at project scope and never recommends deletion", () => {
+  const review = reviewPortfolio(catalog([service()], {
+    stewards: [{ id: "team", name: "Example team", kind: "team", source: "operator" }],
+    credentials: [{
+      id: "old-api",
+      provider: "Example Provider",
+      purpose: "Previously reviewed integration",
+      secretRef: { kind: "secret-manager", locator: "op://Example/Old/value" },
+      consumers: [],
+      owner: "team",
+      payer: "team",
+      source: "operator",
+    }],
+  }), { now: "2026-08-13T00:00:00Z" });
+  const orphan = review.findings.find((item) => item.check === "credential-orphan");
+  assert.equal(orphan.service, null);
+  assert.match(orphan.reason, /no reviewed service consumers/);
+  assert.match(orphan.uncertainty, /does not prove.*unused/i);
+  assert.doesNotMatch(orphan.recommendedNextAction, /delete|revoke/i);
+  assert.equal(orphan.evidence.secretRef.locator, undefined);
+});
+
+test("guardian treats expired access and credential stewardship as stale historical context", () => {
+  const review = reviewPortfolio(catalog([service({ mode: "managed", commands: { logs: "npm run logs" } })], {
+    stewards: [{ id: "founder", name: "Founder", kind: "person", source: "operator", validUntil: "2026-08-01T00:00:00Z" }],
+    stewardshipDefaults: { accountableOwner: "founder", operator: "founder", billingOwner: "founder", credentialOwner: "founder" },
+    access: [{ id: "provider", kind: "provider", subject: "Example Cloud", access: "yes", source: "operator", note: "Historical access.", validUntil: "2026-08-01T00:00:00Z" }],
+    credentials: [{
+      id: "ai-api",
+      provider: "Example AI",
+      purpose: "Inference",
+      secretRef: { kind: "environment", locator: "EXAMPLE_AI_API_KEY" },
+      consumers: ["web"],
+      owner: "founder",
+      payer: "founder",
+      source: "operator",
+      rotationDueAt: "2026-08-01T00:00:00Z",
+    }],
+  }), { now: "2026-08-13T00:00:00Z" });
+  const access = review.findings.find((item) => item.check === "access-freshness");
+  assert.equal(access.state, "stale");
+  assert.equal(access.evidence.recordedAccess, "yes");
+  assert.equal(access.evidence.effectiveAccess, "unknown");
+  assert.ok(review.findings.some((item) => item.check === "credential-owner" && item.state === "stale"));
+  assert.ok(review.findings.some((item) => item.check === "credential-payer" && item.state === "stale"));
+  assert.ok(review.findings.some((item) => item.check === "credential-rotation" && item.state === "stale"));
+  assert.equal(JSON.stringify(review).includes("EXAMPLE_AI_API_KEY"), false);
+});
+
+test("service context overrides project defaults without inheriting deployment, dependencies or evidence", () => {
+  const serviceEvidence = [{
+    id: "privacy-review",
+    check: "privacy",
+    state: "not-applicable",
+    source: "operator",
+    note: "No personal data is stored by this fixture.",
+  }];
+  const review = reviewPortfolio(catalog([service({
+    mode: "on-demand",
+    commands: { start: "npm run dev", logs: "npm run logs" },
+    readiness: {
+      profile: "customer-facing",
+      owner: "Service owner",
+      dataClassification: "personal",
+      costModel: "metered",
+      evidence: serviceEvidence,
+    },
+  })], {
+    readinessDefaults: {
+      profile: "personal",
+      owner: "Project owner",
+      dataClassification: "internal",
+      costModel: "fixed",
+    },
+  }), { now: "2026-08-13T00:00:00.000Z" });
+
+  assert.equal(review.findings.some((item) => item.check === "readiness-profile"), false);
+  assert.equal(review.findings.some((item) => item.check === "privacy"), false);
+  assert.ok(review.findings.some((item) => item.check === "security-review"));
+  assert.ok(review.findings.some((item) => item.check === "alerting"));
+  assert.equal(review.findings.find((item) => item.check === "ownership").state, "unknown");
+  assert.equal(review.findings.find((item) => item.check === "deployment").evidence, null);
+});
+
+test("inherited sensitive profile preserves high severity for stale provider recovery evidence", () => {
+  const observation = providerObservation({
+    evidence: [{
+      id: "restore-old",
+      check: "restore",
+      state: "verified",
+      source: "integration",
+      note: "Restore observation expired.",
+      observedAt: "2026-07-01T00:00:00.000Z",
+      validUntil: "2026-08-01T00:00:00.000Z",
+    }],
+  });
+  const review = reviewPortfolio(catalog([service()], {
+    readinessDefaults: { profile: "sensitive", owner: "Security owner" },
+  }), {
+    now: "2026-08-13T12:00:00.000Z",
+    providerEvidence: [observation],
+  });
+  const restore = providerOnly(review).find((item) => item.check === "restore");
+  assert.equal(restore.state, "stale");
+  assert.equal(restore.severity, "high");
+});
+
 test("results are deterministic for injected time and input", () => {
   const input = catalog([
     service({ id: "zeta", mode: "always-on" }),

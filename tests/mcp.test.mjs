@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { ModuleKind, ScriptTarget, transpileModule } from "typescript";
 
 const catalog = JSON.parse(await readFile(new URL("../app/generated/catalog.json", import.meta.url), "utf8"));
 const projectFixture = catalog.projects.find((project) => project.services.some((service) => Object.keys(service.commands ?? {}).length)) ?? catalog.projects[0];
@@ -9,6 +10,33 @@ const reportedFixture = catalog.projects.flatMap((project) => project.services.m
   .find(({ service }) => service.reported && !service.probe);
 const endpointFixture = catalog.projects.flatMap((project) => project.services.map((service) => ({ project, service })))
   .find(({ service }) => service.endpoint);
+
+function dataModule(source) {
+  return `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
+}
+
+async function loadMcpToolsWithCatalog(fixtureCatalog) {
+  const source = await readFile(new URL("../lib/mcp-tools.ts", import.meta.url), "utf8");
+  let output = transpileModule(source, {
+    compilerOptions: { module: ModuleKind.ESNext, target: ScriptTarget.ES2022 },
+  }).outputText;
+  const catalogModule = dataModule(`
+    export const catalog = ${JSON.stringify(fixtureCatalog)};
+    export const serviceKey = (projectId, serviceId) => \`${"${projectId}"}/${"${serviceId}"}\`;
+    export const resolveServiceEndpoint = (service) => service.url
+      ? { url: service.url, source: "legacy-url", reason: "Fictional test endpoint." }
+      : null;
+  `);
+  const statusModule = dataModule("export async function getCatalogStatuses() { return []; }");
+  const readinessModule = new URL("../lib/readiness.mjs", import.meta.url).href;
+  const stewardshipModule = new URL("../lib/stewardship.mjs", import.meta.url).href;
+  output = output
+    .replace(/(["'])@\/lib\/catalog\1/g, JSON.stringify(catalogModule))
+    .replace(/(["'])@\/lib\/readiness\.mjs\1/g, JSON.stringify(readinessModule))
+    .replace(/(["'])@\/lib\/stewardship\.mjs\1/g, JSON.stringify(stewardshipModule))
+    .replace(/(["'])@\/lib\/status\1/g, JSON.stringify(statusModule));
+  return import(dataModule(output));
+}
 
 const workerUrl = new URL("../dist/server/index.js", import.meta.url);
 workerUrl.searchParams.set("mcp-test", `${process.pid}-${Date.now()}`);
@@ -95,6 +123,7 @@ test("MCP catalog, runbook and reconciliation tools return reviewed structured d
   assert.equal("commands" in project.structuredContent.services[0], false);
   assert.deepEqual(project.structuredContent.services[0].links, projectFixture.services[0].links ?? []);
   assert.deepEqual(project.structuredContent.services[0].readiness, projectFixture.services[0].readiness ?? null);
+  assert.ok(project.structuredContent.services[0].readinessContext);
   assert.equal("score" in project.structuredContent.services[0].readinessAssessment, false);
   assert.ok(Array.isArray(project.structuredContent.services[0].readinessAssessment.gaps));
 
@@ -103,6 +132,7 @@ test("MCP catalog, runbook and reconciliation tools return reviewed structured d
   assert.equal("commands" in service.structuredContent.service, false);
   assert.deepEqual(service.structuredContent.service.links, serviceFixture.links ?? []);
   assert.deepEqual(service.structuredContent.service.readiness, serviceFixture.readiness ?? null);
+  assert.ok(service.structuredContent.service.readinessContext);
   assert.equal("score" in service.structuredContent.service.readinessAssessment, false);
 
   assert.ok(endpointFixture, "fixture catalog needs one service with endpoint selection");
@@ -134,6 +164,142 @@ test("MCP catalog, runbook and reconciliation tools return reviewed structured d
   assert.equal(plan.structuredContent.reviewRequired, true);
   assert.ok(plan.structuredContent.findings.some((finding) => finding.state === "match"));
   assert.ok(plan.structuredContent.findings.some((finding) => finding.state === "mismatch"));
+});
+
+test("MCP summaries expose effective project defaults without inheriting service evidence", async () => {
+  const inheritedService = {
+    id: "inherited-worker",
+    name: "Inherited worker",
+    kind: "worker",
+    environment: "production",
+    host: "fixture-cloud",
+    runtime: "managed",
+    mode: "managed",
+    visibility: "internal",
+  };
+  const overrideService = {
+    ...inheritedService,
+    id: "override-worker",
+    name: "Override worker",
+    readiness: {
+      profile: "sensitive",
+      owner: "Explicit service owner",
+      evidence: [{
+        id: "service-ownership",
+        check: "ownership",
+        state: "declared",
+        source: "operator",
+        note: "Service-specific ownership attestation.",
+      }],
+    },
+  };
+  const project = {
+    version: 1,
+    id: "inheritance-fixture",
+    title: "Inheritance fixture",
+    registration: "overlay",
+    description: "Fictional MCP presentation fixture.",
+    lifecycle: "active",
+    kind: "product",
+    readinessDefaults: {
+      profile: "internal",
+      owner: "Inherited project owner",
+      dataClassification: "internal",
+      costModel: "fixed",
+    },
+    services: [inheritedService, overrideService],
+  };
+  const tools = await loadMcpToolsWithCatalog({
+    version: 1,
+    hosts: [{ id: "fixture-cloud", name: "Fixture Cloud", kind: "cloud", location: "cloud" }],
+    projects: [project],
+  });
+
+  const summary = tools.getProject(project.id);
+  const inherited = summary.services.find((service) => service.id === inheritedService.id);
+  assert.equal(inherited.readiness.profile, "internal");
+  assert.equal(inherited.readiness.owner, "Inherited project owner");
+  assert.equal(inherited.readinessContext.fields.profile.provenance, "project");
+  assert.equal(inherited.readinessContext.fields.owner.provenance, "project");
+  assert.equal(inherited.readinessContext.evidenceProvenance, "absent");
+  assert.deepEqual(inherited.readiness.evidence, []);
+  assert.equal(inherited.readiness.deployment, undefined);
+  assert.equal(inherited.readiness.dependencies, undefined);
+  assert.equal(inherited.readinessAssessment.checks.find((item) => item.check === "ownership").state, "unknown");
+
+  const overridden = summary.services.find((service) => service.id === overrideService.id);
+  assert.equal(overridden.readiness.profile, "sensitive");
+  assert.equal(overridden.readiness.owner, "Explicit service owner");
+  assert.equal(overridden.readinessContext.fields.profile.provenance, "service");
+  assert.equal(overridden.readinessContext.fields.owner.provenance, "service");
+  assert.equal(overridden.readinessContext.evidenceProvenance, "service");
+  assert.equal(overridden.readiness.evidence.length, 1);
+
+  assert.ok(tools.searchProjects("Inherited project owner").some((item) => item.id === project.id));
+  assert.ok(tools.searchProjects("internal").some((item) => item.id === project.id));
+});
+
+test("MCP presents reviewed stewardship without serializing credential locators", async () => {
+  const project = {
+    version: 1,
+    id: "stewardship-fixture",
+    title: "Stewardship fixture",
+    registration: "overlay",
+    description: "Fictional stewardship fixture.",
+    lifecycle: "active",
+    kind: "product",
+    stewards: [
+      { id: "product-team", name: "Product team", kind: "team", source: "operator" },
+      { id: "billing-owner", name: "Billing owner", kind: "person", source: "operator" },
+    ],
+    stewardshipDefaults: { accountableOwner: "product-team", operator: "product-team", billingOwner: "billing-owner", credentialOwner: "product-team" },
+    access: [{ id: "repository", kind: "repository", subject: "example/app", access: "yes", source: "operator", note: "Reviewed separately." }],
+    credentials: [{ id: "mail-api", provider: "Example Mail", purpose: "Send mail", secretRef: { kind: "secret-manager", locator: "op://Example/Mail/value" }, consumers: ["api"], owner: "product-team", payer: "billing-owner", source: "operator" }],
+    services: [{ id: "api", name: "API", kind: "api", environment: "production", host: "fixture-cloud", runtime: "managed", mode: "managed", visibility: "authenticated" }],
+  };
+  const tools = await loadMcpToolsWithCatalog({
+    version: 1,
+    hosts: [{ id: "fixture-cloud", name: "Fixture Cloud", kind: "cloud", location: "cloud" }],
+    projects: [project],
+  });
+
+  const result = tools.getProject(project.id);
+  assert.equal(result.services[0].stewardship.roles.accountableOwner.steward.name, "Product team");
+  assert.equal(result.services[0].stewardship.roles.accountableOwner.provenance, "project");
+  assert.deepEqual(result.credentials[0].secretRef, { kind: "secret-manager", configured: true });
+  assert.equal(JSON.stringify(result).includes("op://Example/Mail/value"), false);
+  assert.ok(tools.searchProjects("Billing owner").some((item) => item.id === project.id));
+});
+
+test("MCP reports stale access and credential stewardship as unknown historical context", async () => {
+  const project = {
+    version: 1,
+    id: "stale-stewardship",
+    title: "Stale stewardship",
+    registration: "overlay",
+    description: "Fictional stale fixture.",
+    lifecycle: "active",
+    kind: "product",
+    stewards: [{ id: "founder", name: "Founder", kind: "person", source: "operator", validUntil: "2000-01-01T00:00:00Z" }],
+    stewardshipDefaults: { accountableOwner: "founder", operator: "founder", billingOwner: "founder", credentialOwner: "founder" },
+    access: [{ id: "provider", kind: "provider", subject: "Example Cloud", access: "yes", source: "operator", note: "Historical.", validUntil: "2000-01-01T00:00:00Z" }],
+    credentials: [{ id: "api", provider: "Example", purpose: "Fixture", secretRef: { kind: "environment", locator: "EXAMPLE_API_KEY" }, consumers: ["api"], owner: "founder", payer: "founder", source: "operator", rotationDueAt: "2000-01-01T00:00:00Z" }],
+    services: [{ id: "api", name: "API", kind: "api", environment: "production", host: "fixture-cloud", runtime: "managed", mode: "managed", visibility: "authenticated", stewardship: { billingOwner: null } }],
+  };
+  const tools = await loadMcpToolsWithCatalog({
+    version: 1,
+    hosts: [{ id: "fixture-cloud", name: "Fixture Cloud", kind: "cloud", location: "cloud" }],
+    projects: [project],
+  });
+  const result = tools.getProject(project.id);
+  assert.equal(result.access[0].recordedAccess, "yes");
+  assert.equal(result.access[0].access, "unknown");
+  assert.equal(result.access[0].freshnessState, "stale");
+  assert.equal(result.credentials[0].owner.state, "stale");
+  assert.equal(result.credentials[0].payer.state, "stale");
+  assert.equal(result.services[0].stewardship.roles.billingOwner.provenance, "explicit-unknown");
+  assert.equal(result.services[0].stewardship.credentials[0].verificationState, "rotation-due");
+  assert.equal(JSON.stringify(result).includes("EXAMPLE_API_KEY"), false);
 });
 
 test("MCP status probes only reviewed services and rejects arbitrary URL arguments", async () => {

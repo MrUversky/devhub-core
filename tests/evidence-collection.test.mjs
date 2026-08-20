@@ -7,6 +7,8 @@ import { promisify } from "node:util";
 import test from "node:test";
 
 import { createEvidenceAdapterRegistry } from "../lib/evidence-adapters/registry.mjs";
+import { VERCEL_DEPLOYMENT_ADAPTER_ID, createVercelDeploymentAdapter } from "../lib/evidence-adapters/providers/vercel-deployment.mjs";
+import { CONNECTOR_CONTRACTS } from "../lib/connector-contracts.mjs";
 import { readSourceCatalog } from "../scripts/catalog-tools.mjs";
 import {
   collectEvidenceBindings,
@@ -87,6 +89,25 @@ test("binding document accepts one strict binding or a versioned list", () => {
   );
 });
 
+test("OpenAI normalized results cannot bypass an exact reviewed binding document", () => {
+  assert.throws(
+    () => parseEvidenceBindingDocument({
+      formatVersion: 1,
+      identity: {
+        provider: "openai",
+        reviewedIdentity: {
+          organizationId: "org_fictional_studio",
+          projectId: "proj_fictional_pocket_ops",
+          keyId: "key_fictional_shared",
+        },
+      },
+      execution: { state: "succeeded" },
+      evidence: [],
+    }),
+    /formatVersion is not supported/,
+  );
+});
+
 test("collection matches a reviewed service repository link before anonymous GitHub reads", async () => {
   const calls = [];
   const registry = createEvidenceAdapterRegistry({ fetch: releaseFetch(RELEASE_IDENTITY, calls) });
@@ -163,6 +184,94 @@ test("named missing credential becomes unknown without provider access", async (
   assert.equal(result.summary.unknown, 1);
   assert.equal(result.results[0].execution.reason, "credential-unavailable");
   assert.equal(result.results[0].evidence[0].state, "unknown");
+  assert.equal(calls, 0);
+});
+
+test("production OpenAI evidence preflights a missing Keychain reference before provider IO", async () => {
+  let calls = 0;
+  const registry = createEvidenceAdapterRegistry({ fetch: async () => {
+    calls += 1;
+    throw new Error("must not run");
+  } });
+  const result = await collectEvidenceBindings(sourceCatalog(), [{
+    projectId: "example-project",
+    serviceId: "web",
+    adapterId: "openai-project-evidence-v1",
+    provider: "openai",
+    reviewedIdentity: {
+      organizationId: "org_fictional_studio",
+      projectId: "proj_fictional_pocket_ops",
+      projectName: "Fictional Pocket Ops",
+      keyId: "key_fictional_shared",
+      access: { project: "yes", billing: "unknown" },
+      stewardship: {
+        credentialOwner: "example-team",
+        billingOwner: null,
+        purpose: "Fictional inference",
+        lastVerifiedAt: null,
+        rotationDueAt: null,
+      },
+      window: { startTime: "2026-08-01T00:00:00.000Z", endTime: "2026-08-08T00:00:00.000Z" },
+    },
+    credentialRef: { kind: "keychain", locator: "generic-password:devhub:openai-admin" },
+    checks: ["ownership", "cost"],
+    freshForSeconds: 3600,
+  }], {
+    registry,
+    resolveCredential: async () => undefined,
+    now: NOW,
+  });
+  assert.equal(result.summary.unknown, 1);
+  assert.equal(result.results[0].execution.reason, "credential-unavailable");
+  assert.equal(calls, 0);
+  assert.doesNotMatch(JSON.stringify(result), /generic-password|openai-admin/);
+});
+
+test("production evidence seam rejects every Vercel contract-limit overflow before provider IO", async () => {
+  let calls = 0;
+  const adapter = createVercelDeploymentAdapter({ fetch: async () => {
+    calls += 1;
+    throw new Error("must not run");
+  } });
+  const registry = {
+    get(adapterId) { return adapterId === VERCEL_DEPLOYMENT_ADAPTER_ID ? adapter : null; },
+  };
+  const base = {
+    projectId: "example-project",
+    serviceId: "web",
+    adapterId: VERCEL_DEPLOYMENT_ADAPTER_ID,
+    provider: "vercel",
+    reviewedIdentity: {
+      scope: { kind: "team", id: "team_fictionalstudio" },
+      projectId: "prj_FictionalPortfolioApp",
+      deploymentId: "dpl_FictionalProduction01",
+      environment: "production",
+      revision: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    },
+    credentialEnv: "FICTIONAL_VERCEL_TOKEN",
+    checks: ["deployment"],
+    freshForSeconds: 3600,
+    deadlineMs: 10_000,
+    maxPages: 20,
+    maxResponseBytes: 1024 * 1024,
+    maxCandidates: 1,
+  };
+  for (const change of [
+    { deadlineMs: 10_001 },
+    { maxPages: 21 },
+    { maxResponseBytes: 1024 * 1024 + 1 },
+    { maxCandidates: 201 },
+  ]) {
+    await assert.rejects(
+      collectEvidenceBindings(sourceCatalog(), [{ ...base, ...change }], {
+        registry,
+        contracts: CONNECTOR_CONTRACTS,
+        environment: { FICTIONAL_VERCEL_TOKEN: "runtime-only" },
+        now: NOW,
+      }),
+      (error) => error.code === "connector-limit-exceeded",
+    );
+  }
   assert.equal(calls, 0);
 });
 

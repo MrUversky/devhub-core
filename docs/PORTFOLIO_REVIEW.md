@@ -4,6 +4,23 @@
 operational questions. It is for deciding what to inspect next, not for
 certifying an application or inventing a readiness score.
 
+## Agent handoff
+
+Portfolio review has its own short human request. It is not Connected Setup and
+does not assume that a project is open for registration. The request may carry
+one finite dashboard focus—whole portfolio, services with App Passport context,
+readiness evidence to review or stewardship questions—but never copies a free
+search query, a service identity or a count snapshot into the task.
+
+The agent keeps the machine protocol internal, summarizes findings by state and
+check type, and selects one highest-priority reversible finding. It shows the
+affected project or service in human terms, explains the evidence question and
+offers one safe next action. If the answer cannot be discovered safely, it asks
+one focused question and waits. `unknown` remains missing reviewed evidence,
+not a production defect. A catalog diff or draft pull request is proposed only
+when reviewable evidence supports a change; the agent never merges or deploys
+it automatically.
+
 ```bash
 npm run devhub -- review-portfolio
 npm run devhub -- review-portfolio --json
@@ -63,6 +80,20 @@ The review also identifies:
 - expired normalized backup or restore evidence;
 - an exact reviewed resource reporting a recurring cost while its project is
   `paused` or still in `discovery`.
+- missing or expired accountable, operator, billing and credential-owner
+  assignments when a project has opted into reviewed stewardship;
+- expired provider, repository or billing access facts, whose effective access
+  becomes unknown while the recorded historical state stays visible;
+- several important roles concentrated in one reviewed person without a team
+  boundary;
+- credential references with a missing or stale owner/payer, a passed rotation due date or
+  no reviewed service consumers.
+
+Stewardship findings do not infer ownership from provider, repository or
+billing access. Credential evidence contains provider, purpose, consumers,
+freshness and only the reference kind/configured state; vault paths and secret
+values are not presented. An orphan is a review question, never a deletion or
+revocation recommendation. See [Stewardship](STEWARDSHIP.md).
 
 Provider drift is a review question, never an action. Every such finding keeps
 the adapter ID, provider, reviewed resource identity, evidence ID, observation

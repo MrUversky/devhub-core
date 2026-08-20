@@ -7,6 +7,7 @@ import { CatalogSourceError, readSourceCatalog, reconcileProject } from "./catal
 import { validateHostsDocument, validateProjectDocument } from "./catalog-validation.mjs";
 import { resolveDevHubPaths } from "./devhub-config.mjs";
 import { semanticDiff } from "./semantic-diff.mjs";
+import { redactCredentialLocators } from "../lib/catalog-presentation.mjs";
 
 const stableIdPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -251,6 +252,13 @@ export async function createOverlayProposal(root, target, runtimeHostId, {
     });
   }
 
+  if (manifest.credentials?.length) {
+    return overlayResultError(resolvedTarget, {
+      code: "credential-bearing-overlay-proposal",
+      message: "This reviewed overlay contains external credential references; inspect its private catalog source directly because proposal output never serializes locators.",
+    });
+  }
+
   return {
     version: 1,
     command: "propose-overlay",
@@ -289,6 +297,29 @@ export async function createOverlayProposal(root, target, runtimeHostId, {
 
 function displayValue(value) {
   return value === undefined ? "(absent)" : JSON.stringify(value);
+}
+
+function redactedDiffValue(fieldPath, value) {
+  if (value === undefined) return value;
+  if (fieldPath.endsWith(".secretRef.locator")) return { configured: true };
+  if (fieldPath.endsWith(".secretRef") && value && typeof value === "object" && !Array.isArray(value)) {
+    return { kind: value.kind, configured: true };
+  }
+  return redactCredentialLocators(value);
+}
+
+function presentSemanticDiff(changes) {
+  return changes.map((change) => {
+    const presentedPath = change.path.endsWith(".secretRef.locator")
+      ? change.path.slice(0, -".locator".length)
+      : change.path;
+    return {
+      ...change,
+      path: presentedPath,
+      ...(Object.hasOwn(change, "catalog") ? { catalog: redactedDiffValue(change.path, change.catalog) } : {}),
+      ...(Object.hasOwn(change, "project") ? { project: redactedDiffValue(change.path, change.project) } : {}),
+    };
+  });
 }
 
 export function formatReconciliation(result, { diffOnly = false } = {}) {
@@ -628,8 +659,9 @@ export async function createReconciliationPlan(root, target, runtimeHostId, { pa
     });
   }
 
-  const changes = semanticDiff(context.catalogManifest, context.nativeManifest);
-  const clean = changes.length === 0;
+  const rawChanges = semanticDiff(context.catalogManifest, context.nativeManifest);
+  const changes = presentSemanticDiff(rawChanges);
+  const clean = rawChanges.length === 0;
   return {
     ...base,
     version: 2,

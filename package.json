@@ -1,7 +1,7 @@
 {
   "name": "devhub-self-hosted",
-  "version": "0.7.0-alpha.1",
-  "description": "Self-hosted service registry and operational map for developer tools.",
+  "version": "1.0.0-rc.2",
+  "description": "Never lose track of what your agent shipped. Self-hosted operational context across laptops, servers, and clouds.",
   "license": "Apache-2.0",
   "private": true,
   "bin": {
@@ -20,8 +20,9 @@
     "catalog:build": "node scripts/compile-catalog.mjs",
     "devhub": "node scripts/devhub.mjs",
     "release:evidence": "node scripts/build-release-artifacts.mjs",
+    "release:gate": "node scripts/clean-room-release-gate.mjs",
     "release:verify": "node scripts/verify-release-artifacts.mjs",
-    "test": "npm run build && node --test tests/*.test.mjs",
+    "test": "npm run build && node --test --test-concurrency=4 tests/*.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "artifact:verify": "node scripts/verify-public-manifest.mjs ."
   },

@@ -1,0 +1,15 @@
+{
+  "id": "dpl_FictionalProduction01",
+  "projectId": "prj_FictionalPortfolioApp",
+  "url": "fictional-production.vercel.app",
+  "created": 1786608000000,
+  "target": "production",
+  "readyState": "READY",
+  "meta": {
+    "githubCommitSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "deployHook": "vercel-secret-shaped-evidence-meta-value"
+  },
+  "env": [{ "key": "PRIVATE_VALUE", "value": "vercel-secret-shaped-evidence-env-value" }],
+  "builds": [{ "secret": "vercel-secret-shaped-evidence-build-value" }],
+  "logs": ["vercel-secret-shaped-evidence-log-value"]
+}
