@@ -1,55 +1,80 @@
 # DevHub
 
-> **The home for what you shipped**
+> **The home for what you shipped.**
 
-> # Never lose track of what your agent shipped.
+> **Never lose track of what your agent shipped.**
 
-Your coding agent can build and deploy it. DevHub keeps the operational context
-from disappearing—what exists, where it runs, what’s current, and what to do
-next across your laptops, servers, and clouds.
+Your coding agent can build and deploy it. DevHub preserves the operational
+context around what exists, where it runs, what's current, and what to do next.
 
 > **Git remembers the code. DevHub remembers how it runs.**
 
-Apps end up scattered across chats, laptops, servers, and clouds. DevHub keeps
-the context together—what exists, where it runs, what’s current, and what to do
-next.
-
-Monitoring, safety, cost and recovery appear as reviewed facts and evidence,
-not automatic guarantees. When DevHub cannot establish them, it says `unknown`.
+DevHub is a self-hosted operational map for software built and operated with
+coding agents. It keeps the facts that source control alone does not: what
+exists, where it runs, which entry point is reviewed, what is current, and what
+still needs attention.
 
 ![DevHub connects the operational context around every service](public/og.png)
 
-**Find it again · Know what’s true · Continue safely**
+DevHub combines:
 
-> **Self-hosted. Read-only by default. No secrets. Every catalog change
-> reviewable.**
+- a Git-backed catalog that you own;
+- a lightweight read-only dashboard;
+- the same reviewed catalog through read-only MCP; and
+- explicit setup, verification, rollback and uninstall guidance for Codex and
+  other coding agents.
 
-DevHub gives builders a dependable home for agent-built software, preserving
-the context they need to understand what exists and take the next safe step.
-The catalog does not depend on a particular framework, process manager or
-hosting platform.
-
-It keeps reviewed YAML manifests in Git, builds a lightweight read-only
-dashboard and exposes the same catalog through a read-only MCP endpoint. It
-does not scan random ports, execute shell commands, store secrets or act as a
-process supervisor. Unknown never pretends to be green.
-
-> **Alpha:** the public snapshot is intended for evaluation and small
-> self-hosted installations. The manifest contract may still gain
-> backward-compatible fields before 1.0.
+It does not scan arbitrary ports, execute project commands, store secrets or
+pretend missing evidence is healthy. Unknown stays unknown.
 
 ## Start here
 
-- [Install DevHub](#install-devhub)
-- [Set up DevHub with Codex](docs/COMMUNITY_BOOTSTRAP.md)
-- [Add the optional private Sites companion](docs/SITES_COMPANION.md)
-- [Set up connections](docs/CONNECTED_SETUP.md)
-- [Create your catalog](#add-your-catalog)
-- [Connect Codex, Claude Code, or Cursor](docs/INTEGRATIONS_AGENTS.md)
-- [Understand the configuration](docs/CONFIGURATION.md)
-- [Review the security boundary](SECURITY.md)
+**This GitHub page is the complete starting point.** Share this repository URL
+with the person who will install DevHub:
 
-## What it answers
+<https://github.com/MrUversky/devhub-core>
+
+### Set up with Codex
+
+1. Open a new Codex task.
+2. Paste the repository URL above.
+3. Say:
+
+> Set up DevHub for me from this repository.
+
+That is enough. The reviewed [community first-run](docs/COMMUNITY_BOOTSTRAP.md)
+tells Codex how to select and verify the current public release, install the
+runtime, ask only recognizable setup questions, create the first catalog,
+start the dashboard, verify MCP, and return recovery steps. The person does not
+need to choose a release tag, understand plugin packaging, assemble JSON or run
+the commands in the technical sections below.
+
+At the end, Codex returns:
+
+- the local or already-reviewed private dashboard URL;
+- a separate user-owned Git catalog containing the reviewed project map;
+- a read-only MCP connection plan;
+- verification and idempotence results; and
+- exact rollback and uninstall actions.
+
+### Projects and DevHub releases are separate
+
+A DevHub application release changes the DevHub software. Adding, updating or
+removing one of your projects changes only your catalog through a normal
+reviewed Git commit. **Catalog work does not require a new DevHub release.**
+Rebuild or refresh the running dashboard against the accepted catalog revision;
+do not package each project change as a DevHub version.
+
+### Prefer to inspect first?
+
+- [How the guided first run works](docs/COMMUNITY_BOOTSTRAP.md)
+- [Installation and recovery](docs/INSTALLATION.md)
+- [Codex integration](docs/INTEGRATIONS_CODEX.md)
+- [Configuration](docs/CONFIGURATION.md)
+- [Security boundary](SECURITY.md)
+- [Optional owner-only Sites companion](docs/SITES_COMPANION.md)
+
+## What DevHub answers
 
 - What projects and runnable services are registered?
 - Where does each service belong, and which entry point is reviewed?
@@ -58,44 +83,56 @@ process supervisor. Unknown never pretends to be green.
 
 The core promise is continuity: return to a project after weeks or months and
 recover the context needed to continue. DevHub is not a metrics stack or a
-universal process supervisor; when trustworthy evidence is missing, it reports
-`unknown` instead of inventing a green status.
+universal process supervisor.
+
+> **Self-hosted. Read-only by default. No secrets. Every catalog change
+> reviewable.**
+
+> **Release candidate:** the public repository is intended for evaluation and
+> small self-hosted installations. macOS and Linux have reviewed first-run
+> paths; unsupported platform or deployment claims remain explicit.
 
 ## Install DevHub
 
-The primary current-alpha path is the pinned user-wide CLI from one authorized,
-checksum-verified candidate or release asset set. It installs without npm or
-`sudo`, works from any project and keeps the catalog and configuration outside
-the immutable runtime. Public releases are distributed through the existing
-`MrUversky/devhub-core` repository; no npm package is published. Pin both the
-plugin marketplace and release assets to one reviewed annotated public tag.
+### Guided setup with Codex (recommended)
+
+Use the three-line [Start here](#start-here) flow. Codex performs the machine
+work and pauses at the existing review boundaries. Commands below document the
+reproducible implementation; they are not homework for the person installing
+DevHub.
+
+### Manual plugin installation
+
+Codex calls a GitHub repository that contains a machine-readable plugin listing
+a **marketplace**. Here, `devhub-community` is only the plugin source stored in
+this public repository. It is not a separate website, store or account, and its
+presence does not by itself claim a listing in a universal plugin directory.
+
+If you intentionally want to install the plugin by hand, pin the repository and
+release assets to the same reviewed annotated public tag:
 
 ```bash
 codex plugin marketplace add MrUversky/devhub-core --ref <TAG>
 codex plugin add devhub@devhub-community
 ```
 
-Follow [Pinned user-wide CLI](docs/INSTALLATION.md#pinned-user-wide-cli), then
-verify `devhub doctor --workflow --json` and `devhub doctor --install --json`.
-The same installer performs explicit upgrades, rollback and config-preserving
-uninstall. The Codex plugin, Claude Code memory and Cursor rule are guidance;
-none of them installs the CLI.
+Then follow [Pinned user-wide CLI](docs/INSTALLATION.md#pinned-user-wide-cli)
+and verify `devhub doctor --workflow --json` and
+`devhub doctor --install --json`. The plugin supplies guidance; the
+checksum-verified runtime is installed separately and works from any project
+without `npm -g`, `sudo` or a source checkout.
 
-In a blank Codex task, ask **Set up my DevHub from the exact public release**.
-The reviewed [community first-run](docs/COMMUNITY_BOOTSTRAP.md) makes Codex do
-the release verification, installation, bounded onboarding, deployment and MCP
-planning while you answer only recognizable choices and approve each write.
+### Run the dashboard from source
 
-The dashboard/server remains available from a verified source snapshot:
+From a verified source snapshot:
 
 ```bash
 npm ci
 npm run dev
 ```
 
-Open <http://127.0.0.1:3000>, choose the sources to inspect, and continue with
-the bounded request in Codex, Claude Code or Cursor. Docker Compose remains an
-equivalent source-based path in [Quick start with Docker](#quick-start-with-docker).
+Open <http://127.0.0.1:3000>. Docker Compose remains an equivalent source-based
+path in [Quick start with Docker](#quick-start-with-docker).
 
 ## Set up connections
 
