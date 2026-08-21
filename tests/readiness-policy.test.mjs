@@ -5,6 +5,7 @@ import {
   PROFILE_EXPECTATIONS,
   evaluateReadiness,
   groupRecoveryReadiness,
+  resolveServiceReadinessContext,
 } from "../lib/readiness.mjs";
 
 const NOW = "2026-08-13T12:00:00.000Z";
@@ -150,4 +151,57 @@ test("evaluation rejects an invalid injected clock", () => {
     () => evaluateReadiness({ profile: "personal", evidence: [] }, { now: "not-a-date" }),
     /valid now value/,
   );
+});
+
+test("project readiness defaults fill only absent service fields with explicit provenance", () => {
+  const project = {
+    readinessDefaults: {
+      profile: "internal",
+      owner: "Platform team",
+      dataClassification: "internal",
+      costModel: "fixed",
+    },
+  };
+  const service = {
+    readiness: {
+      profile: "customer-facing",
+      dataClassification: "personal",
+      evidence: [evidence("monitoring", "declared")],
+    },
+  };
+  const context = resolveServiceReadinessContext(project, service);
+
+  assert.deepEqual(context.fields, {
+    profile: { value: "customer-facing", provenance: "service" },
+    owner: { value: "Platform team", provenance: "project" },
+    dataClassification: { value: "personal", provenance: "service" },
+    costModel: { value: "fixed", provenance: "project" },
+  });
+  assert.equal(context.readiness.profile, "customer-facing");
+  assert.equal(context.readiness.owner, "Platform team");
+  assert.equal(context.readiness.dataClassification, "personal");
+  assert.equal(context.readiness.costModel, "fixed");
+  assert.strictEqual(context.readiness.evidence, service.readiness.evidence);
+  assert.equal(context.evidenceProvenance, "service");
+});
+
+test("a service can inherit the project profile without inheriting or inventing evidence", () => {
+  const project = { readinessDefaults: { profile: "personal", owner: "Product owner" } };
+  const context = resolveServiceReadinessContext(project, {});
+  const assessment = evaluateReadiness(context.readiness, { now: NOW });
+
+  assert.equal(context.fields.profile.provenance, "project");
+  assert.equal(context.fields.owner.provenance, "project");
+  assert.equal(context.fields.dataClassification.provenance, "absent");
+  assert.deepEqual(context.readiness.evidence, []);
+  assert.equal(context.evidenceProvenance, "absent");
+  assert.ok(assessment.checks.every((item) => item.state === "unknown"));
+  assert.ok(assessment.checks.every((item) => item.evidence === null));
+});
+
+test("absent project and service readiness remain absent instead of creating a default profile", () => {
+  const context = resolveServiceReadinessContext({}, {});
+  assert.equal(context.readiness, null);
+  assert.ok(Object.values(context.fields).every((field) => field.value === null && field.provenance === "absent"));
+  assert.equal(evaluateReadiness(context.readiness, { now: NOW }).profile, null);
 });

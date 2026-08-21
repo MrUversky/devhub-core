@@ -1,4 +1,16 @@
 import { catalog, serviceKey, type LiveServiceStatus, type Service } from "@/lib/catalog";
+import {
+  createStatusPollingRuntime,
+  parseStatusPollingConfig,
+  statusCadenceForService,
+  type StatusPollingEntry,
+  type StatusPollingRuntime,
+} from "@/lib/status-polling.mjs";
+
+type CatalogPollingInput = { projectId: string; service: Service };
+type CatalogPollingEntry = StatusPollingEntry<CatalogPollingInput>;
+
+const statusPollingConfig = parseStatusPollingConfig(process.env);
 
 export function runtimeHostId() {
   return process.env.DEVHUB_HOST_ID?.trim() || "unknown";
@@ -84,14 +96,59 @@ export async function probeCatalogService(
   }
 }
 
-export async function getCatalogStatuses(filter?: { projectId?: string; serviceId?: string }) {
+function unexpectedStatusFailure(entry: CatalogPollingEntry, checkedAt: string): LiveServiceStatus {
+  const { projectId, service } = entry.input;
+  return service.probe ? {
+    key: serviceKey(projectId, service.id),
+    state: "down",
+    source: "probe",
+    reason: "probe-failed",
+    checkedAt,
+    observedAt: checkedAt,
+    note: "Probe failed before a health result was available.",
+  } : {
+    key: serviceKey(projectId, service.id),
+    state: "unknown",
+    source: "catalog",
+    reason: "catalog-only",
+    checkedAt,
+    note: "Status evaluation failed.",
+  };
+}
+
+function createCatalogPollingRuntime() {
+  return createStatusPollingRuntime<CatalogPollingEntry, LiveServiceStatus>({
+    config: statusPollingConfig,
+    load: (entry) => probeCatalogService(entry.input.projectId, entry.input.service),
+    onLoadError: (entry, _error, checkedAt) => unexpectedStatusFailure(entry, checkedAt),
+    logger: (summary) => console.info(`[devhub-status] ${JSON.stringify(summary)}`),
+  });
+}
+
+type StatusPollingGlobal = typeof globalThis & {
+  __DEVHUB_STATUS_POLLING_RUNTIME_V1__?: StatusPollingRuntime<CatalogPollingEntry, LiveServiceStatus>;
+};
+
+const statusPollingGlobal = globalThis as StatusPollingGlobal;
+const statusPollingRuntime = statusPollingGlobal.__DEVHUB_STATUS_POLLING_RUNTIME_V1__ ??= createCatalogPollingRuntime();
+
+export async function getCatalogStatusSnapshot(filter?: { projectId?: string; serviceId?: string }) {
+  const hosts = new Map(catalog.hosts.map((host) => [host.id, host]));
   const selected = catalog.projects.flatMap((project) =>
     project.id === filter?.projectId || !filter?.projectId
       ? project.services
         .filter((service) => !filter?.serviceId || service.id === filter.serviceId)
-        .map((service) => ({ projectId: project.id, service }))
+        .map((service): CatalogPollingEntry => ({
+          key: serviceKey(project.id, service.id),
+          cadence: statusCadenceForService(service, hosts.get(service.host)),
+          input: { projectId: project.id, service },
+        }))
       : [],
   );
 
-  return Promise.all(selected.map(({ projectId, service }) => probeCatalogService(projectId, service)));
+  return statusPollingRuntime.getSnapshot(selected);
+}
+
+export async function getCatalogStatuses(filter?: { projectId?: string; serviceId?: string }) {
+  return (await getCatalogStatusSnapshot(filter)).statuses;
 }

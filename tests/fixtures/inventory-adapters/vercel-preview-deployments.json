@@ -1,0 +1,20 @@
+{
+  "deployments": [
+    {
+      "uid": "dpl_FictionalPreview0001",
+      "projectId": "prj_FictionalPortfolioApp",
+      "name": "fictional-portfolio-app",
+      "url": "fictional-preview.vercel.app",
+      "alias": ["fictional-preview-branch.vercel.app"],
+      "createdAt": "2026-08-13T07:30:00.000Z",
+      "target": null,
+      "state": "BUILDING",
+      "meta": {
+        "githubCommitSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "privateKey": "vercel-secret-shaped-preview-meta-value"
+      },
+      "source": "vercel-secret-shaped-source-value"
+    }
+  ],
+  "pagination": { "count": 1, "next": 1786500000000, "prev": null }
+}

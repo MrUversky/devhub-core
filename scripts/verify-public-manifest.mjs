@@ -31,6 +31,9 @@ async function collectFiles(root) {
     const entries = (await readdir(directory, { withFileTypes: true }))
       .sort((left, right) => compareCodepoints(left.name, right.name));
     for (const entry of entries) {
+      // Git metadata describes the transport checkout, not released source.
+      // Ignore only the exact root entry; every other path remains manifest-bound.
+      if (directory === root && entry.name === ".git") continue;
       const absolute = path.join(directory, entry.name);
       const relative = toPosix(path.relative(root, absolute));
       const stat = await lstat(absolute);

@@ -14,20 +14,21 @@ const geistMono = Geist_Mono({
 });
 
 const siteMetadata: Metadata = {
-  title: "DevHub — The operational home for everything you build",
-  description: "A self-hosted map for every app, API, worker and private tool — where it runs, how fresh its status is, and what to do next.",
+  title: "DevHub — Never lose track of what your agent shipped.",
+  description: "Your coding agent can build and deploy it. DevHub preserves the operational context: what exists, where it runs, what’s current, and what to do next across laptops, servers, and clouds.",
   icons: {
     icon: [{ url: "/favicon.svg", type: "image/svg+xml", sizes: "any" }],
     shortcut: "/favicon.svg",
   },
   openGraph: {
-    title: "DevHub — Git remembers the code. DevHub remembers how it runs.",
-    description: "Find, understand and safely recover every service you build across laptops, servers and private networks.",
-    images: [{ url: "/og.png", width: 1733, height: 907, alt: "DevHub operational map connecting software services across hosts" }],
+    title: "DevHub — Never lose track of what your agent shipped.",
+    description: "Git remembers the code. DevHub remembers how it runs.",
+    siteName: "DevHub — The home for what you shipped",
+    images: [{ url: "/og.png", width: 1733, height: 907, alt: "DevHub — Never lose track of what your agent shipped." }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "DevHub — The operational home for everything you build",
+    title: "DevHub — Never lose track of what your agent shipped.",
     description: "Git remembers the code. DevHub remembers how it runs.",
     images: ["/og.png"],
   },

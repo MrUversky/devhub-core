@@ -1,0 +1,48 @@
+version: 1
+id: content-pipeline
+title: Content Pipeline
+registration: native
+aliases: [Demo publishing tools]
+description: Local publishing workflow that is paused until its next campaign.
+lifecycle: paused
+kind: automation
+repository: example/content-pipeline
+tags: [demo, automation]
+workspaces:
+  - host: developer-laptop
+    path: /workspace/content-pipeline
+services:
+  - id: campaign-builder
+    name: Campaign builder
+    kind: local-tool
+    environment: local
+    host: developer-laptop
+    runtime: node
+    mode: on-demand
+    visibility: local
+    url: http://127.0.0.1:4400
+    reported:
+      state: stopped
+      observedAt: 2026-08-13T08:00:00Z
+      note: Stopped is expected while this on-demand tool is paused.
+    commands:
+      start: npm run dev
+      logs: npm run logs
+    readiness:
+      profile: personal
+      owner: Example content operator
+      dataClassification: internal
+      costModel: free
+      dependencies: []
+      evidence:
+        - id: content-ownership
+          check: ownership
+          state: declared
+          source: operator
+          note: The operating owner is declared, but the evidence has not been independently checked.
+          observedAt: 2026-08-13T08:00:00Z
+        - id: content-backup
+          check: backup
+          state: unknown
+          source: catalog
+          note: No reviewed backup evidence is registered for the campaign files.

@@ -1,0 +1,47 @@
+{
+  "snapshot": {
+    "captured": "2026-08-13T11:58:00.000Z",
+    "tenantGroup": {
+      "opaqueTeamRef": "fixture-team-omega",
+      "displayLabel": "Fictional Example Team",
+      "applications": [
+        {
+          "opaqueAppRef": "remote-client-console",
+          "display": {
+            "label": "Client Console"
+          },
+          "codeLink": {
+            "host": "gitlab",
+            "pathSegments": ["fictional-studio", "client-console"]
+          },
+          "targets": [
+            {
+              "opaqueTargetRef": "target-production-blue",
+              "lane": "production",
+              "phase": "ready",
+              "publicEntrypoints": ["https://console.example.test/v2"]
+            }
+          ],
+          "catalogClaim": {
+            "projectId": "must-never-be-provider-truth"
+          }
+        },
+        {
+          "opaqueAppRef": "remote-timer",
+          "display": {
+            "label": "Remote Timer"
+          },
+          "artifact": {
+            "kind": "container-image"
+          },
+          "targets": [],
+          "credentialMaterial": "must-never-leave-the-raw-fixture"
+        }
+      ]
+    },
+    "pagingEnvelope": {
+      "segmentsVisited": 1,
+      "moreSegments": false
+    }
+  }
+}

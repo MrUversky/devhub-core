@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "bindings": [
+    {
+      "projectId": "example-app",
+      "serviceId": "production-api",
+      "adapterId": "openai-project-evidence-v1",
+      "provider": "openai",
+      "reviewedIdentity": {
+        "organizationId": "org_fictional_studio",
+        "projectId": "proj_fictional_pocket_ops",
+        "projectName": "Fictional Pocket Ops",
+        "keyId": "key_fictional_shared",
+        "access": {
+          "project": "yes",
+          "billing": "unknown"
+        },
+        "stewardship": {
+          "credentialOwner": "example-product-team",
+          "billingOwner": null,
+          "purpose": "Fictional production inference",
+          "lastVerifiedAt": null,
+          "rotationDueAt": null
+        },
+        "window": {
+          "startTime": "2026-08-01T00:00:00.000Z",
+          "endTime": "2026-08-08T00:00:00.000Z"
+        }
+      },
+      "credentialRef": {
+        "kind": "keychain",
+        "locator": "generic-password:devhub:openai-admin"
+      },
+      "checks": ["ownership", "cost"],
+      "freshForSeconds": 3600,
+      "deadlineMs": 10000,
+      "maxPages": 20,
+      "maxResponseBytes": 1048576,
+      "maxCandidates": 2
+    }
+  ]
+}

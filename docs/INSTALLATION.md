@@ -1,18 +1,189 @@
 # Installation
 
-DevHub can run from a source checkout, as a Docker Compose service, or under
-systemd. The public alpha is not distributed as a global npm package; install
-from a verified source release or repository snapshot.
+DevHub can run as a pinned user-wide CLI, from a source checkout, as a Docker
+Compose service, or under systemd. The user-wide CLI is a verified release
+asset, not a global npm package and not a symlink to a checkout.
 
 ## Requirements
 
-- Node.js 22.13 or newer for source and systemd installations.
+- Node.js 22.13 or newer for user-wide CLI, source and systemd installations.
 - Docker Engine with Compose v2 for the container path.
 - A private access boundary if more than one user or device needs access.
 
 The dashboard has no application-layer authentication. MCP defaults to the
 deployment's network boundary and may optionally require a bearer token; that
 token does not protect the dashboard.
+
+## Coding-agent workflow runtime
+
+The portable Codex plugin installs workflow guidance only, and an MCP
+connection exposes only the reviewed read-only catalog. Neither installs the
+local CLI that runs Connected Setup. Before Connected Setup, prefer a user-wide
+`devhub` already available on `PATH`; running setup from any project requires
+that command to be accepted by:
+
+```bash
+devhub doctor --workflow --json
+```
+
+After the marketplace publishes plugin version `0.7.0-alpha.5`, refresh its
+snapshot and reinstall the portable guidance plugin. For the documented public
+marketplace name:
+
+```bash
+codex plugin marketplace upgrade devhub-community
+codex plugin add devhub@devhub-community
+```
+
+A fresh Codex installation pins the existing public repository to one reviewed
+annotated tag before adding that same marketplace:
+
+```bash
+codex plugin marketplace add MrUversky/devhub-core --ref <TAG>
+codex plugin add devhub@devhub-community
+```
+
+Never substitute `main` or another mutable ref for `<TAG>`. The application
+release and generic plugin keep independent versions; the tag selects the
+reviewed public tree containing both.
+
+Release maintainers must record one fresh install from this remote exact tag in
+an isolated Codex home after the public tag and release are published. A local
+staged-tree install is a required pre-publication gate, but it does not replace
+that post-publication remote smoke.
+
+Restart Codex and start a new task so the refreshed skill is loaded. This
+changes guidance only; the local setup runtime must still pass the workflow
+check below.
+
+Do not invent an `npm -g` installation. Install the user-wide CLI only from an
+approved exact-commit candidate or GitHub release using the pinned procedure
+below. For first setup from source, use the current checkout
+only when it was explicitly supplied for DevHub setup, then verify it with:
+
+```bash
+npm run devhub -- doctor --workflow --json
+```
+
+Do not select a checkout merely because the current directory looks like
+DevHub. The exact compatibility result has contract version 2, a semantic
+runtime version and only `setupRun: 1`, `connectionReview: 1`,
+`guidedConfirmation: 1` and `taskObservation: 1`. The check reads no catalog or
+credentials and contacts no provider; it performs zero provider I/O.
+
+If the command is missing, fails or returns another contract, Connected Setup
+must stop before provider I/O with **DevHub needs an update** and the actions
+**Help me update DevHub** and **Not now**. Update through the same approved
+installation source and repeat the check. Do not substitute lower-level setup
+commands such as `setup-session` or `discovery-inbox` for an outdated runtime.
+
+## Pinned user-wide CLI
+
+Obtain these files from the same approved candidate or release:
+
+- `devhub-self-hosted-v<VERSION>-source.tar.gz`;
+- `devhub-cli-v<VERSION>.tar.gz`;
+- `devhub-install-v<VERSION>.mjs`;
+- `devhub-self-hosted-v<VERSION>-sbom.cdx.json`;
+- `SHA256SUMS` and `RELEASE-EVIDENCE.json`.
+
+The evidence binds the runtime, installer, sanitized public manifest, exact
+source commit, checksums and CycloneDX SBOM. From the asset directory, verify
+every checksum before installation. On macOS use `shasum -a 256 -c
+SHA256SUMS`; on Linux use `sha256sum -c SHA256SUMS`.
+
+Then install one exact version without `sudo` or npm. Both paths passed to the
+installer must be absolute:
+
+```bash
+VERSION=1.0.0-rc.3
+ASSETS=/absolute/path/to/verified-assets
+RUNTIME="$ASSETS/devhub-cli-v$VERSION.tar.gz"
+SHA256=$(awk -v file="$(basename "$RUNTIME")" '$2 == file { print $1 }' "$ASSETS/SHA256SUMS")
+node "$ASSETS/devhub-install-v$VERSION.mjs" install \
+  --archive "$RUNTIME" \
+  --sha256 "$SHA256"
+```
+
+The installer accepts only a clean sanitized runtime manifest, verifies the
+pinned digest, loads the exact workflow contract before activation and fails
+closed on a FileProvider/cloud-backed or non-owner-writable destination. It
+installs immutable files under
+`${XDG_DATA_HOME:-$HOME/.local/share}/devhub/runtime/<VERSION>`, atomically
+updates the active-version pointer and writes regular wrapper files to
+`$HOME/.local/bin`. It never creates a symlink to the source checkout. Add that
+bin directory to `PATH`, then verify:
+
+If installation is interrupted, repeat `install` with the same archive and
+digest. An existing same-version runtime is reused only after its manifest
+bytes, complete file set, file modes, checksums and workflow contract exactly
+match the pinned archive. A mismatch fails closed without activation. Ordinary
+activation failures restore the pre-existing wrappers and active-version
+pointer; retry removes only abandoned staging for that exact version. External
+catalog and configuration paths are never part of this recovery transaction.
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+devhub doctor --workflow --json
+devhub doctor --install --json
+```
+
+Mutable state stays outside the runtime:
+
+- catalog: `${XDG_DATA_HOME:-$HOME/.local/share}/devhub/catalog` by default;
+- connection profiles: `${XDG_CONFIG_HOME:-$HOME/.config}/devhub/connection-profiles.json`;
+- instance paths: `${XDG_CONFIG_HOME:-$HOME/.config}/devhub/instance.json`;
+- generated CLI output: `${XDG_DATA_HOME:-$HOME/.local/share}/devhub/generated`.
+
+The installed runtime can preview one first map from any working directory.
+Every provider source and local root is explicit, and `--host-id` binds local
+discovery to one reviewed or proposed host identity:
+
+```bash
+devhub onboard --sources github,local-host \
+  --root /absolute/operator-selected/projects \
+  --host-id reviewed-workstation
+```
+
+The version 1 plan is stdout-only. It does not write the catalog, profiles,
+generated output or caller directory and has no apply mode.
+
+Initialize the external catalog explicitly. Preview first and add `--apply`
+only after reviewing the destination and host identity:
+
+```bash
+CATALOG="${XDG_DATA_HOME:-$HOME/.local/share}/devhub/catalog"
+devhub init-catalog "$CATALOG" \
+  --host-id developer-laptop \
+  --host-name "Developer laptop" \
+  --host-kind mac \
+  --host-location local
+```
+
+Use `--host-kind linux` on Linux. Windows CLI support is not documented by
+this release. See [Portable configuration boundary](CONFIGURATION.md) for path
+precedence and instance configuration.
+
+### Explicit upgrade, rollback and uninstall
+
+An upgrade repeats the verified `install` command with a newer exact version.
+The new version is staged and smoke-tested before the active pointer changes;
+older installed versions remain available for rollback:
+
+```bash
+devhub-install rollback --version 0.7.0-alpha.1
+```
+
+There is no unattended updater. Remove the user-wide command and all installed
+runtime versions with:
+
+```bash
+devhub-install uninstall
+```
+
+Uninstall preserves the external catalog, generated data and
+`$XDG_CONFIG_HOME/devhub` configuration by default. Delete those paths only as
+a separate reviewed data-removal decision.
 
 ## Docker Compose
 

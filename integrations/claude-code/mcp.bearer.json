@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "devhub": {
+      "type": "http",
+      "url": "${DEVHUB_MCP_URL:-https://devhub.example.com/mcp}",
+      "headers": {
+        "Authorization": "Bearer ${DEVHUB_MCP_TOKEN}"
+      }
+    }
+  }
+}
