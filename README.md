@@ -42,6 +42,7 @@ process supervisor. Unknown never pretends to be green.
 
 - [Install DevHub](#install-devhub)
 - [Set up DevHub with Codex](docs/COMMUNITY_BOOTSTRAP.md)
+- [Add the optional private Sites companion](docs/SITES_COMPANION.md)
 - [Set up connections](docs/CONNECTED_SETUP.md)
 - [Create your catalog](#add-your-catalog)
 - [Connect Codex, Claude Code, or Cursor](docs/INTEGRATIONS_AGENTS.md)

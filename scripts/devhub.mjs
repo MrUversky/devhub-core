@@ -62,6 +62,11 @@ import {
   HostMonitoringSetupError,
   runHostMonitoringSetup,
 } from "./host-monitoring-setup.mjs";
+import {
+  formatSitesCompanion,
+  runSitesCompanion,
+} from "./sites-companion.mjs";
+import { SitesCompanionError } from "../lib/sites-companion.mjs";
 import { formatPortfolioReview, reviewPortfolio } from "./portfolio-review.mjs";
 import {
   formatProviderInventory,
@@ -119,6 +124,7 @@ Usage:
   npm run devhub -- discover-local <host-id> --root /absolute/path [--root /another/path ...] [--max-depth N] [--max-entries N] [--max-bytes N] [--deadline-ms N] [--review <review.json>] [--json]
   npm run devhub -- inspect-host [host-id] [--json]
   npm run devhub -- setup-host-monitoring [host-id] [--apply] [--json]
+  npm run devhub -- sites-companion --source-dir /absolute/verified/public-source --source-tag <exact-tag> --source-manifest-sha256 <digest> --catalog-revision <commit> --status-api-origin <https-origin> --staging-dir /absolute/fresh/path [--binding-file /absolute/binding.json] [--apply] [--json]
   npm run devhub -- diff <project-directory> [--json]
   npm run devhub -- reconcile <project-directory> [--json] [--apply]
 
@@ -147,6 +153,7 @@ review-portfolio builds an evidence-backed readiness, recovery and provider-drif
 discover-local scans only explicit roots on one reviewed macOS or Linux host, emits redacted review-only candidates through Discovery Inbox, and writes nothing.
 inspect-host performs one-shot read-only matching against reviewed local runtime evidence.
 setup-host-monitoring previews reviewed path-scoped Tailscale Serve health routes for this host. --apply adds only missing exact paths; it never enables Funnel, resets Serve, stores credentials or installs a resident agent.
+sites-companion verifies one exact public source manifest and clean reviewed catalog revision, then previews a private owner-only Sites staging plan. --apply writes only the fresh ephemeral staging directory; it never creates, publishes or deploys a Site.
 diff reports field-level semantic drift; exit 0 means clean, 2 drift and 3 invalid.
 reconcile is a reviewed dry-run plan by default. --apply explicitly refreshes an eligible native record.`);
   console.log(`
@@ -457,6 +464,10 @@ if (!command || command === "help" || command === "--help") {
   const setup = await runHostMonitoringSetup(root, args, { paths, environment: process.env });
   if (setup.parsed.json) console.log(JSON.stringify(setup.result, null, 2));
   else console.log(formatHostMonitoringSetup(setup.result));
+} else if (command === "sites-companion") {
+  const companion = await runSitesCompanion(root, args, { paths, environment: process.env });
+  if (companion.parsed.json) console.log(JSON.stringify(companion.result, null, 2));
+  else console.log(formatSitesCompanion(companion.result));
 } else if (command === "diff" || command === "reconcile") {
   if (!rawTarget) throw new Error(`${command} needs a project directory`);
   const apply = flags.has("--apply");
@@ -480,7 +491,7 @@ if (!command || command === "help" || command === "--help") {
   process.exitCode = 1;
 }
 } catch (error) {
-  const expected = error instanceof ReconciliationApplyError || error instanceof CatalogInitError || error instanceof EvidenceCollectionError || error instanceof ProviderInventoryError || error instanceof AgentSetupError || error instanceof ConnectedSetupError || error instanceof SetupRunError || error instanceof SetupSessionError || error instanceof SetupStateError || error instanceof DiscoveryInboxError || error instanceof LocalDiscoveryError || error instanceof OnboardError || error instanceof OnboardApplyError || error instanceof HostMonitoringSetupError || error instanceof DevHubConfigError;
+  const expected = error instanceof ReconciliationApplyError || error instanceof CatalogInitError || error instanceof EvidenceCollectionError || error instanceof ProviderInventoryError || error instanceof AgentSetupError || error instanceof ConnectedSetupError || error instanceof SetupRunError || error instanceof SetupSessionError || error instanceof SetupStateError || error instanceof DiscoveryInboxError || error instanceof LocalDiscoveryError || error instanceof OnboardError || error instanceof OnboardApplyError || error instanceof HostMonitoringSetupError || error instanceof SitesCompanionError || error instanceof DevHubConfigError;
   const failure = {
     version: 2,
     command: command ?? "unknown",

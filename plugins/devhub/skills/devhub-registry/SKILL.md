@@ -14,6 +14,10 @@ Treat the configured DevHub instance as the operational map for its owner. Use a
   **Community first-run bootstrap** below before ordinary Connected Setup. Do
   the machine work yourself and ask only recognizable choices plus explicit
   write approvals; do not turn the installation guide into user homework.
+- For “add my private Sites companion”, “show my DevHub in Sites”, or an
+  equivalent request after community first run: follow **Owner-only Sites
+  companion** below. Use the installed Sites building and hosting workflows,
+  but keep create/reuse and publish as distinct explicit approvals.
 - For “set up my DevHub”, “connect everything I can access”, “Build my map”, “refresh my DevHub”, or “подключи всё, к чему у меня есть доступ”: first verify the local workflow runtime under **Verify the Connected Setup runtime** below. Then run `devhub setup --json`, or its wrapper from the one explicitly supplied compatible checkout. Report recommended connectors, exact detection evidence and the Build-my-map plan. Detection is not authorization or account access: do not start OAuth, open provider pages, read credential values or modify the catalog. A planned connector remains planned even when its local marker is detected.
 - For “where is it?”, “is it up?”, or “how do I open, start, or recover it?”: query an available DevHub MCP server and answer from catalog evidence.
 - For “make this host live” or “configure host monitoring”: when an exact reviewed probe contains `publish.type: tailscale-serve`, preview it on that target with `devhub setup-host-monitoring <host-id> --json`. Use `--apply` only when the user asked to configure monitoring and the preview has no identity or path conflict. Never enable Funnel or run `tailscale serve reset`.
@@ -119,6 +123,64 @@ internal; speak in product choices and outcomes.
 The full public operator/evaluator contract is in
 `docs/COMMUNITY_BOOTSTRAP.md`. An optional Sites companion is a later view and
 never replaces this canonical backend.
+
+## Owner-only Sites companion
+
+Run this only after the community bootstrap proves the canonical self-hosted
+dashboard, MCP, exact public release and exact reviewed catalog revision.
+Missing proof stops this optional view; it does not make first run fail.
+
+1. Verify the same exact annotated public tag/source manifest and require the
+   user catalog Git repository to be clean at its reviewed commit. Accept only
+   one exact private HTTPS canonical backend origin. Another device's loopback,
+   mutable source, dirty catalog or guessed endpoint stops the workflow.
+2. Read the optional external version 1 companion binding. It may contain only
+   project ID, exact Site origin and current/prior version IDs. Never read or
+   reuse a shared `.openai/hosting.json`, another owner's private project/binding or a
+   project found only by a common display name.
+3. Run `devhub sites-companion` without `--apply` and summarize exact release,
+   catalog revision, create/reuse action, fixed backend origin and owner-only
+   access. Only **Prepare this private companion** permits the identical
+   `--apply`, which writes a fresh temporary staging directory and nothing
+   else.
+4. Require the staged transform to keep only the catalog fields needed by the
+   view and to remove profiles, credentials, locators, access facts, stewards,
+   workspaces, readiness, URLs, commands, probes and reported state. It must
+   omit `/api/context`, `/api/status`, `/mcp` and `.openai/hosting.json` while
+   recording exact source/catalog provenance. Scan the staged output before
+   Sites work.
+5. Use the installed Sites building/hosting connector contracts. Do not invent
+   arguments. Prove custom/private access with exactly the invoking owner, zero
+   groups and zero external visitors. If that cannot be created or verified,
+   stop rather than publish shared/public. A valid binding means reuse exactly
+   that project; otherwise **Create this owner-only Site** is a separate
+   approval and creates no deployed version.
+6. Add the connector-returned project ID only to `.openai/hosting.json` inside
+   temporary staging. Configure `DEVHUB_SITES_COMPANION=owner-only` and one
+   origin-only `DEVHUB_STATUS_API_BASE_URL` through Sites runtime values, not
+   Git. Never put a token, CORS wildcard, endpoint path/query or owner binding
+   into public source.
+7. The canonical backend separately allows only the exact Site origin for
+   credential-free `/api/status` reads. Do not expose `/api/context` or MCP and
+   never create a Worker relay, tunnel, Funnel, public ingress, token or
+   provider authorization. If the reviewed backend change is unavailable,
+   report the prerequisite.
+8. Build and show one private preview. The viewer browser is the only status
+   transport and uses `credentials: "omit"`. Validate response schema, known
+   service keys and timestamps. Clear prior observations on failure; unknown,
+   unavailable, duplicate or stale evidence never renders as `LIVE`.
+9. Only **Publish this private companion** permits saving and privately
+   deploying the exact previewed version. Recheck one owner/no groups/no
+   external visitors after success, then atomically record the external
+   binding. A failed publish leaves the prior binding/version unchanged.
+10. An unchanged rerun must reuse the same project ID. Rollback restores only
+    the recorded prior Site version after approval. Removing the binding removes
+    only that external record; Site deletion, access changes, backend changes,
+    catalog removal and canonical DevHub removal are separate actions.
+
+The full product and recovery contract is in `docs/SITES_COMPANION.md`. This is
+not a second setup engine, hosted monitoring/control plane, SaaS, browser OAuth,
+schema-v2 migration, resident agent, automatic deploy or unrelated workflow.
 
 ## Verify the Connected Setup runtime
 

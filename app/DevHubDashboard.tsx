@@ -32,8 +32,10 @@ import {
   type PortfolioReviewScope,
 } from "@/lib/agent-handoff-prompts.mjs";
 import {
+  isFreshLiveStatus,
   SAME_ORIGIN_STATUS_API_ENDPOINT,
   selectReviewedStatusSnapshot,
+  statusBridgePresentation,
 } from "@/lib/status-bridge.mjs";
 
 type StatusResponse = {
@@ -54,17 +56,6 @@ const lifecycleLabels: Record<string, string> = {
   production: "Production",
   paused: "Paused",
   archived: "Archived",
-};
-
-const stateLabels: Record<string, string> = {
-  up: "LIVE",
-  down: "UNREACHABLE",
-  stopped: "STOPPED",
-  degraded: "DEGRADED",
-  registered: "NOT CHECKED",
-  protected: "LOGIN",
-  unknown: "NOT CHECKED",
-  checking: "CHECKING",
 };
 
 const modeLabels: Record<string, string> = {
@@ -864,8 +855,7 @@ function nextAction(service: Service, status: LiveServiceStatus, currentHostId: 
 }
 
 function StatusPill({ status }: { status: LiveServiceStatus }) {
-  const state = status.state || "unknown";
-  const label = status.source === "reported" && state === "up" ? "REPORTED UP" : (stateLabels[state] ?? state.toUpperCase());
+  const { state, label } = statusBridgePresentation(status);
   const age = status.source === "probe" ? observationAge(status.ageMs) : null;
   return (
     <span className={`status status-${state}`} title={[status.note, age ? `Checked ${age}` : null].filter(Boolean).join(" · ") || undefined}>
@@ -984,6 +974,7 @@ function ProjectCard({ project, statuses, hostNames, currentHostId, serviceFilte
 }
 
 function statusExplanation(service: Service, status: LiveServiceStatus, hostName: string, sameDevice: boolean) {
+  if (status.source === "probe" && status.freshness === "stale") return "The last probe result is stale. Refresh canonical DevHub before treating this service as live.";
   if (status.state === "up" && status.source === "reported") return `The catalog last recorded this service as running on ${hostName}, but there is no live probe.`;
   if (status.state === "up") return `DevHub reached this service successfully${status.latencyMs ? ` in ${status.latencyMs} ms` : ""}.`;
   if (status.state === "protected") return "The service is reachable and correctly asks you to sign in.";
@@ -1295,13 +1286,15 @@ export function DevHubDashboard({
   initialHostFilter = "all",
   initialStatusFilter = "all",
   statusApiEndpoint = SAME_ORIGIN_STATUS_API_ENDPOINT,
+  viewerContextEndpoint = "/api/context",
 }: {
   catalog: Catalog;
   initialCatalogInsight?: CatalogInsight;
   initialReviewOpen?: boolean;
   initialHostFilter?: string;
   initialStatusFilter?: ServiceStatusFilter;
-  statusApiEndpoint?: string;
+  statusApiEndpoint?: string | null;
+  viewerContextEndpoint?: string | null;
 }) {
   const [query, setQuery] = useState("");
   const [lifecycle, setLifecycle] = useState("all");
@@ -1333,14 +1326,17 @@ export function DevHubDashboard({
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      const [statusResponse, contextResponse] = await Promise.all([
-        fetch(statusApiEndpoint, { cache: "no-store", credentials: "omit", mode: "cors" }),
-        fetch("/api/context", { cache: "no-store" }),
-      ]);
-      if (!statusResponse.ok || !contextResponse.ok) throw new Error("DevHub status refresh failed");
+      if (!statusApiEndpoint) throw new Error("DevHub companion status endpoint is not configured");
+      const statusResponse = await fetch(statusApiEndpoint, { cache: "no-store", credentials: "omit", mode: "cors" });
+      if (!statusResponse.ok) throw new Error("DevHub status refresh failed");
       const statusResult = selectReviewedStatusSnapshot(await statusResponse.json(), reviewedServiceKeys) as StatusResponse | null;
       if (!statusResult) throw new Error("DevHub returned an invalid status snapshot");
-      const contextResult = await contextResponse.json() as ViewerContext;
+      let contextResult: ViewerContext | null = null;
+      if (viewerContextEndpoint) {
+        const contextResponse = await fetch(viewerContextEndpoint, { cache: "no-store" });
+        if (!contextResponse.ok) throw new Error("DevHub context refresh failed");
+        contextResult = await contextResponse.json() as ViewerContext;
+      }
       setLiveStatuses(statusResult.statuses);
       setLastRefresh(statusResult.freshness.newestCheckedAt ?? statusResult.observedAt);
       setLastRefreshMode(statusResult.freshness.mode);
@@ -1354,7 +1350,7 @@ export function DevHubDashboard({
     } finally {
       setRefreshing(false);
     }
-  }, [reviewedServiceKeys, statusApiEndpoint]);
+  }, [reviewedServiceKeys, statusApiEndpoint, viewerContextEndpoint]);
 
   useEffect(() => {
     const firstRun = window.setTimeout(() => {
@@ -1408,7 +1404,7 @@ export function DevHubDashboard({
     service,
     status: statusMap.get(serviceKey(project.id, service.id)) ?? getInitialStatus(project.id, service),
   })));
-  const upCount = serviceStatuses.filter(({ status }) => status.source === "probe" && (status.state === "up" || status.state === "protected")).length;
+  const upCount = serviceStatuses.filter(({ status }) => isFreshLiveStatus(status)).length;
   const attentionCount = serviceStatuses.filter(({ service, status }) => isAttention(service, status)).length;
   const serviceCount = serviceStatuses.length;
   const reviewPresentation = useMemo(() => deriveCatalogReviewPresentation(catalog.projects), [catalog.projects]);

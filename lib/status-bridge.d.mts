@@ -27,4 +27,6 @@ export function parseStatusCorsOrigins(value?: string): string[];
 export function isAllowedStatusCorsOrigin(origin: string | null, allowedOrigins: readonly string[]): boolean;
 export function resolveStatusApiEndpoint(value?: string): string;
 export function selectReviewedStatusSnapshot(value: unknown, reviewedKeys: ReadonlySet<string> | readonly string[]): StatusBridgeSnapshot | null;
+export function isFreshLiveStatus(status: StatusBridgeStatus): boolean;
+export function statusBridgePresentation(status: StatusBridgeStatus): Readonly<{ state: string; label: string }>;
 export const SAME_ORIGIN_STATUS_API_ENDPOINT: "/api/status";

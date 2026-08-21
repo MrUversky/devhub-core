@@ -11,6 +11,10 @@ release** and follow the reviewed [community first-run](COMMUNITY_BOOTSTRAP.md).
 Codex performs the commands and asks for recognizable deployment, host, root
 and source choices; it does not hand the user JSON or a shell checklist.
 
+After that canonical deployment is verified, an owner may separately ask for
+the optional [owner-only Sites companion](SITES_COMPANION.md). It is a
+preview-first private view, not the catalog, MCP server or monitoring backend.
+
 ## Add the plugin marketplace
 
 Pin the public repository to one reviewed annotated release tag. Do not install
@@ -26,7 +30,7 @@ Codex home after the exact public tag is published. Pre-publication validation
 of a staged local marketplace remains separate evidence.
 
 For example, after the matching public release is published, `<TAG>` is an
-exact value such as `v1.0.0-rc.5`. From an already downloaded and verified
+exact value such as `v1.0.0-rc.6`. From an already downloaded and verified
 DevHub checkout, the equivalent offline marketplace command is:
 
 ```bash

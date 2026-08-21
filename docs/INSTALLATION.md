@@ -102,7 +102,7 @@ Then install one exact version without `sudo` or npm. Both paths passed to the
 installer must be absolute:
 
 ```bash
-VERSION=1.0.0-rc.5
+VERSION=1.0.0-rc.6
 ASSETS=/absolute/path/to/verified-assets
 RUNTIME="$ASSETS/devhub-cli-v$VERSION.tar.gz"
 SHA256=$(awk -v file="$(basename "$RUNTIME")" '$2 == file { print $1 }' "$ASSETS/SHA256SUMS")

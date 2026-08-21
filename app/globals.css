@@ -2494,6 +2494,17 @@ a {
   background: #d8b85b;
 }
 
+.status-stale,
+.status-reported {
+  color: #8a6d1e;
+}
+
+.status-stale i,
+.status-reported i {
+  background: #d8b85b;
+  box-shadow: none;
+}
+
 .status-checking i {
   animation: pulse 900ms infinite alternate;
 }
