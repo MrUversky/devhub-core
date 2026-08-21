@@ -11,6 +11,7 @@ const catalog = JSON.parse(await readFile(new URL("../app/generated/catalog.json
 const execFileAsync = promisify(execFile);
 const root = path.resolve(import.meta.dirname, "..");
 const cli = path.join(root, "scripts/devhub.mjs");
+const packageDocument = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
 
 async function run(...args) {
   return execFileAsync(process.execPath, [cli, ...args], { cwd: root });
@@ -97,6 +98,75 @@ test("doctor returns machine-readable, non-mutating catalog findings", async () 
   assert.equal(result.readOnly, true);
   assert.ok(Array.isArray(result.findings));
   assert.ok(result.findings.every((finding) => finding.code && finding.severity && finding.message));
+});
+
+test("doctor workflow returns the exact deterministic compatibility contract without catalog access", async () => {
+  const missingCatalog = path.join(os.tmpdir(), `devhub-missing-catalog-${process.pid}`);
+  const first = await runWithEnvironment(["doctor", "--workflow", "--json"], { DEVHUB_CATALOG_DIR: missingCatalog });
+  const second = await runWithEnvironment(["doctor", "--workflow", "--json"], { DEVHUB_CATALOG_DIR: missingCatalog });
+  assert.equal(first.exitCode, 0);
+  assert.equal(first.stderr, "");
+  assert.equal(second.exitCode, 0);
+  assert.deepEqual(JSON.parse(first.stdout), {
+    contractVersion: 2,
+    runtimeVersion: packageDocument.version,
+    capabilities: { setupRun: 1, connectionReview: 1, guidedConfirmation: 1, taskObservation: 1 },
+  });
+  assert.equal(second.stdout, first.stdout);
+
+  const ordinaryDoctor = await runWithEnvironment(["doctor", "--json"], { DEVHUB_CATALOG_DIR: missingCatalog });
+  assert.notEqual(ordinaryDoctor.exitCode, 0, "ordinary doctor should still read the configured catalog");
+});
+
+test("doctor workflow rejects missing JSON, duplicate, unknown and positional arguments", async () => {
+  for (const argumentsList of [
+    ["doctor", "--workflow"],
+    ["doctor", "--workflow", "--json", "--json"],
+    ["doctor", "--workflow", "--json", "--extra"],
+    ["doctor", "--workflow", "--json", "unexpected"],
+  ]) {
+    const result = await runWithEnvironment(argumentsList, {});
+    assert.equal(result.exitCode, 3);
+    const output = argumentsList.includes("--json") ? JSON.parse(result.stdout) : null;
+    if (output) assert.equal(output.error.code, "doctor-arguments-invalid");
+    else assert.match(result.stderr, /doctor-arguments-invalid/);
+  }
+});
+
+test("doctor install exposes path precedence without reading catalog or credential values", async () => {
+  const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "devhub-doctor-install-"));
+  try {
+    const instanceConfig = path.join(temporaryRoot, "instance.json");
+    const instanceGenerated = path.join(temporaryRoot, "instance-generated");
+    const environmentProfiles = path.join(temporaryRoot, "environment-profiles.json");
+    const cliCatalog = path.join(temporaryRoot, "cli-catalog");
+    await writeFile(instanceConfig, `${JSON.stringify({
+      version: 1,
+      catalogDirectory: path.join(temporaryRoot, "instance-catalog"),
+      connectionProfilesFile: path.join(temporaryRoot, "instance-profiles.json"),
+      generatedDirectory: instanceGenerated,
+    }, null, 2)}\n`);
+    const result = await runWithEnvironment([
+      "doctor", "--install", "--json",
+      "--instance-config", instanceConfig,
+      "--catalog-dir", cliCatalog,
+    ], {
+      DEVHUB_CONNECTION_PROFILES_FILE: environmentProfiles,
+    });
+    assert.equal(result.exitCode, 0);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.command, "doctor-install");
+    assert.equal(output.cliVersion, packageDocument.version);
+    assert.equal(output.catalogPath, cliCatalog);
+    assert.equal(output.connectionProfilesPath, environmentProfiles);
+    assert.deepEqual(output.generatedPaths, [
+      path.join(instanceGenerated, "app-catalog.json"),
+      path.join(instanceGenerated, "public-catalog.json"),
+    ]);
+    assert.doesNotMatch(result.stdout, /credentialValue|tokenValue|secretValue/);
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true });
+  }
 });
 
 test("reconcile returns an existing native record and semantic state", async () => {

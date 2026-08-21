@@ -1,0 +1,21 @@
+{
+  "deployments": [
+    {
+      "uid": "dpl_FictionalProduction01",
+      "projectId": "prj_FictionalPortfolioApp",
+      "name": "fictional-portfolio-app",
+      "url": "fictional-production.vercel.app",
+      "alias": ["fictional-portfolio.vercel.app"],
+      "created": 1786608000000,
+      "target": "production",
+      "readyState": "READY",
+      "meta": {
+        "githubCommitSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "deployHook": "vercel-secret-shaped-meta-value"
+      },
+      "build": { "env": "vercel-secret-shaped-build-value" },
+      "logs": ["vercel-secret-shaped-log-value"]
+    }
+  ],
+  "pagination": { "count": 1, "next": 1786500000000, "prev": null }
+}

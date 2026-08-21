@@ -10,8 +10,13 @@ export type EvidenceAdapterBinding = {
   provider: string;
   reviewedIdentity: Record<string, EvidenceIdentityValue>;
   credentialEnv?: string | null;
+  credentialRef?: { kind: "environment" | "keychain" | "secret-manager"; locator: string } | null;
   checks: ReadinessCheck[];
   freshForSeconds: number;
+  deadlineMs?: number;
+  maxPages?: number;
+  maxResponseBytes?: number;
+  maxCandidates?: number;
 };
 export type EvidenceAdapterRequest = {
   provider: string;
@@ -19,6 +24,8 @@ export type EvidenceAdapterRequest = {
   checks: ReadinessCheck[];
   credential: string | null;
   now: string;
+  signal: AbortSignal;
+  limits: { deadlineMs: number; maxPages: number; maxResponseBytes: number; maxCandidates: number };
 };
 export type EvidenceAdapterObservation = {
   status: "success";
@@ -31,7 +38,7 @@ export type EvidenceAdapterObservation = {
     note: string;
     url?: string;
   }>;
-  deployment?: { identity?: string; revision?: string; url?: string; host?: string };
+  deployment?: { identity?: string; revision?: string; url?: string; host?: string; deployedAt?: string };
   recurringCost?: { state: "present" | "absent" | "unknown"; url?: string };
 } | { status: "unavailable"; reason: string };
 export type EvidenceAdapter = {
@@ -70,7 +77,7 @@ export type NormalizedEvidenceAdapterResult = {
     validUntil?: string;
     url?: string;
   }>;
-  deployment?: { identity?: string; revision?: string; url?: string; host?: string };
+  deployment?: { identity?: string; revision?: string; url?: string; host?: string; deployedAt?: string };
   recurringCost?: { state: "present" | "absent" | "unknown"; observedAt: string; url?: string };
 };
 export class EvidenceAdapterContractError extends Error { code: string }
@@ -85,6 +92,7 @@ export function runEvidenceAdapter(options: {
   binding: EvidenceAdapterBinding;
   adapter: EvidenceAdapter;
   environment?: Record<string, string | undefined>;
+  resolveCredential?: (reference: Readonly<{ kind: "environment" | "keychain" | "secret-manager"; locator: string }>) => Promise<string | undefined> | string | undefined;
   now?: Date | string | number;
   cache?: ReturnType<typeof createMemoryEvidenceCache> | null;
 }): Promise<NormalizedEvidenceAdapterResult>;

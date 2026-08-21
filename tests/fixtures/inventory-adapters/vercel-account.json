@@ -1,0 +1,7 @@
+{
+  "user": {
+    "uid": "usr_fictional_owner",
+    "email": "private-owner@fictional.invalid",
+    "token": "vercel-secret-shaped-account-value"
+  }
+}

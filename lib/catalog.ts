@@ -1,4 +1,5 @@
 import catalogData from "@/app/generated/catalog.json";
+import type { ConnectionSnapshot } from "@/lib/connection-status.mjs";
 
 export type Lifecycle = "discovery" | "active" | "production" | "paused" | "archived";
 export type ObservedState = "up" | "down" | "stopped" | "degraded" | "registered" | "unknown";
@@ -6,7 +7,7 @@ export type ObservedState = "up" | "down" | "stopped" | "degraded" | "registered
 export type Host = {
   id: string;
   name: string;
-  kind: "mac" | "linux" | "cloud";
+  kind: "mac" | "windows" | "linux" | "cloud";
   location: "local" | "remote" | "cloud";
   tailscaleName?: string;
   tailscaleIPv4?: string;
@@ -17,6 +18,14 @@ export type HttpProbe = {
   url: string;
   successStatuses: number[];
   timeoutMs?: number;
+  publish?: ProbePublisher;
+};
+
+export type ProbePublisher = {
+  type: "tailscale-serve";
+  visibility: "tailnet";
+  targetUrl: string;
+  path: string;
 };
 
 export type ReportedStatus = {
@@ -59,7 +68,7 @@ export type ReadinessEvidence = {
 };
 
 export type ServiceReadiness = {
-  profile: "personal" | "internal" | "customer-facing" | "sensitive";
+  profile?: "personal" | "internal" | "customer-facing" | "sensitive";
   owner?: string;
   dataClassification?: "none" | "internal" | "personal" | "sensitive" | "regulated" | "unknown";
   costModel?: "free" | "fixed" | "metered" | "unknown";
@@ -82,6 +91,59 @@ export type ServiceReadiness = {
   evidence: ReadinessEvidence[];
 };
 
+export type ProjectReadinessDefaults = Pick<ServiceReadiness, "profile" | "owner" | "dataClassification" | "costModel">;
+
+export type ReviewedSource = "operator" | "agent" | "integration" | "catalog";
+export type StewardshipSource = Exclude<ReviewedSource, "catalog">;
+
+export type Steward = {
+  id: string;
+  name: string;
+  kind: "person" | "team";
+  source: StewardshipSource;
+  observedAt?: string;
+  validUntil?: string;
+};
+
+export type StewardshipRole = "accountableOwner" | "operator" | "billingOwner" | "credentialOwner";
+export type Stewardship = Partial<Record<StewardshipRole, string | null>>;
+
+export type AccessFact = {
+  id: string;
+  kind: "provider" | "repository" | "billing";
+  subject: string;
+  access: "yes" | "no" | "unknown";
+  source: StewardshipSource;
+  note: string;
+  observedAt?: string;
+  validUntil?: string;
+};
+
+export type ExternalCredentialReference = {
+  kind: "environment" | "keychain" | "secret-manager";
+  locator: string;
+};
+
+export type PresentedCredentialReference = {
+  kind: ExternalCredentialReference["kind"];
+  configured: true;
+};
+
+export type CredentialReference = ExternalCredentialReference | PresentedCredentialReference;
+
+export type CredentialInventoryItem = {
+  id: string;
+  provider: string;
+  purpose: string;
+  secretRef: CredentialReference;
+  consumers: string[];
+  owner: string;
+  payer?: string;
+  source: StewardshipSource;
+  lastVerifiedAt?: string;
+  rotationDueAt?: string;
+};
+
 export type Service = {
   id: string;
   name: string;
@@ -89,12 +151,14 @@ export type Service = {
   environment: string;
   host: string;
   runtime: string;
+  runtimeIdentifier?: string;
   mode: "always-on" | "on-demand" | "managed" | "internal";
   visibility: "public" | "authenticated" | "tailnet" | "local" | "internal";
   description?: string;
   url?: string;
   endpoint?: ServiceEndpoint;
   readiness?: ServiceReadiness;
+  stewardship?: Stewardship;
   links?: ServiceLink[];
   probe?: HttpProbe;
   reported?: ReportedStatus;
@@ -113,13 +177,23 @@ export type Project = {
   repository?: string;
   tags?: string[];
   workspaces?: Array<{ host: string; path: string }>;
+  readinessDefaults?: ProjectReadinessDefaults;
+  stewards?: Steward[];
+  stewardshipDefaults?: Partial<Record<StewardshipRole, string>>;
+  access?: AccessFact[];
+  credentials?: CredentialInventoryItem[];
   services: Service[];
 };
 
 export type Catalog = {
   version: 1;
+  instance: {
+    mode: "private" | "demo";
+    label: string;
+  };
   hosts: Host[];
   projects: Project[];
+  connections: ConnectionSnapshot;
 };
 
 export type LiveServiceStatus = {
@@ -132,6 +206,9 @@ export type LiveServiceStatus = {
   latencyMs?: number;
   httpStatus?: number;
   note?: string;
+  ageMs?: number;
+  freshness?: "fresh" | "stale";
+  refreshAfter?: string;
 };
 
 export type ViewerContext = {

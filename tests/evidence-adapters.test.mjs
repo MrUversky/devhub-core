@@ -308,3 +308,36 @@ test("oversized adapter evidence is rejected before normalization", async () => 
   assert.equal(result.execution.reason, "invalid-adapter-result");
   assert.ok(result.evidence.every((item) => item.state === "unknown"));
 });
+
+test("generic evidence deadline aborts a hung adapter and preserves only trusted cache context", async () => {
+  const cache = createMemoryEvidenceCache();
+  const boundedBinding = { ...binding, deadlineMs: 100 };
+  const first = await runEvidenceAdapter({
+    binding: boundedBinding,
+    adapter: adapterFor(await fixture("success")),
+    environment: { FIXTURE_PROVIDER_TOKEN: "runtime-only" },
+    now: NOW,
+    cache,
+  });
+  assert.equal(first.execution.state, "succeeded");
+
+  let signal;
+  const timedOut = await runEvidenceAdapter({
+    binding: boundedBinding,
+    adapter: adapterFor(null, {
+      async collect(request) {
+        signal = request.signal;
+        assert.equal(Object.isFrozen(request), true);
+        assert.equal(Object.isFrozen(request.limits), true);
+        return new Promise(() => {});
+      },
+    }),
+    environment: { FIXTURE_PROVIDER_TOKEN: "runtime-only" },
+    now: "2026-08-13T10:06:00.000Z",
+    cache,
+  });
+  assert.equal(signal.aborted, true);
+  assert.deepEqual(timedOut.execution, { state: "failed", reason: "adapter-timeout", cache: "fresh" });
+  assert.equal(timedOut.freshness.state, "fresh");
+  assert.equal(timedOut.evidence[0].state, "verified");
+});

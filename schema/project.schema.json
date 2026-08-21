@@ -40,6 +40,23 @@
       "type": "array",
       "items": { "$ref": "#/$defs/workspace" }
     },
+    "readinessDefaults": { "$ref": "#/$defs/readinessDefaults" },
+    "stewards": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/steward" }
+    },
+    "stewardshipDefaults": { "$ref": "#/$defs/stewardshipDefaults" },
+    "access": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/accessFact" }
+    },
+    "credentials": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/credential" }
+    },
     "services": {
       "type": "array",
       "items": { "$ref": "#/$defs/service" }
@@ -72,7 +89,29 @@
           "uniqueItems": true,
           "items": { "type": "integer", "minimum": 100, "maximum": 599 }
         },
-        "timeoutMs": { "type": "integer", "minimum": 100, "maximum": 60000 }
+        "timeoutMs": { "type": "integer", "minimum": 100, "maximum": 60000 },
+        "publish": { "$ref": "#/$defs/probePublisher" }
+      }
+    },
+    "probePublisher": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "visibility", "targetUrl", "path"],
+      "properties": {
+        "type": { "const": "tailscale-serve" },
+        "visibility": { "const": "tailnet" },
+        "targetUrl": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^http://127\\.0\\.0\\.1(?::(?:0|[1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?/[^/?#]+(?:/[^/?#]+)*$",
+          "not": { "pattern": "/\\.{1,2}(?:/|$)" }
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^/[A-Za-z0-9._~-]+(?:/[A-Za-z0-9._~-]+)*$",
+          "not": { "pattern": "(?:^|/)\\.{1,2}(?:/|$)" },
+          "maxLength": 200
+        }
       }
     },
     "reported": {
@@ -167,7 +206,7 @@
     "readiness": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["profile", "evidence"],
+      "required": ["evidence"],
       "properties": {
         "profile": { "enum": ["personal", "internal", "customer-facing", "sensitive"] },
         "owner": { "type": "string", "minLength": 1 },
@@ -186,6 +225,119 @@
         }
       }
     },
+    "readinessDefaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "profile": { "enum": ["personal", "internal", "customer-facing", "sensitive"] },
+        "owner": { "type": "string", "minLength": 1 },
+        "dataClassification": { "enum": ["none", "internal", "personal", "sensitive", "regulated", "unknown"] },
+        "costModel": { "enum": ["free", "fixed", "metered", "unknown"] }
+      }
+    },
+    "steward": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "kind", "source"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["person", "team"] },
+        "source": { "enum": ["operator", "agent", "integration"] },
+        "observedAt": { "type": "string", "format": "date-time" },
+        "validUntil": { "type": "string", "format": "date-time" }
+      }
+    },
+    "stewardshipDefaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "accountableOwner": { "$ref": "#/$defs/id" },
+        "operator": { "$ref": "#/$defs/id" },
+        "billingOwner": { "$ref": "#/$defs/id" },
+        "credentialOwner": { "$ref": "#/$defs/id" }
+      }
+    },
+    "stewardship": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "accountableOwner": { "anyOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
+        "operator": { "anyOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
+        "billingOwner": { "anyOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
+        "credentialOwner": { "anyOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] }
+      }
+    },
+    "accessFact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "subject", "access", "source", "note"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "enum": ["provider", "repository", "billing"] },
+        "subject": { "type": "string", "minLength": 1 },
+        "access": { "enum": ["yes", "no", "unknown"] },
+        "source": { "enum": ["operator", "agent", "integration"] },
+        "note": { "type": "string", "minLength": 1 },
+        "observedAt": { "type": "string", "format": "date-time" },
+        "validUntil": { "type": "string", "format": "date-time" }
+      }
+    },
+    "credentialRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "locator"],
+      "properties": {
+        "kind": { "enum": ["environment", "keychain", "secret-manager"] },
+        "locator": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "not": {
+            "pattern": "(?:-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|[Bb][Ee][Aa][Rr][Ee][Rr](?:\\s|[-_%])+[A-Za-z0-9._~+/-]{8,}|(?:sk-(?:proj-)?|gh[pousr]_|xox[baprs]-|AKIA)[A-Za-z0-9_-]{8,}|eyJ[A-Za-z0-9_-]{5,}\\.[A-Za-z0-9_-]{5,}\\.[A-Za-z0-9_-]{5,}|(?:postgres(?:ql)?|mysql|mongodb(?:\\+srv)?|redis):\\/\\/[^\\s/:@]+:[^\\s/@]+@|(?:api[-_]?key|access[-_]?token|client[-_]?secret|password|passwd|secret|token)\\s*[:=]\\s*[A-Za-z0-9_./+=-]{8,})"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "environment" } }, "required": ["kind"] },
+          "then": { "properties": { "locator": { "pattern": "^[A-Z][A-Z0-9_]{0,99}$" } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "keychain" } }, "required": ["kind"] },
+          "then": { "properties": { "locator": { "pattern": "^generic-password:[A-Za-z0-9._@+-]{1,100}:[A-Za-z0-9._@+-]{1,100}$" } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "secret-manager" } }, "required": ["kind"] },
+          "then": { "properties": { "locator": { "pattern": "^op:\\/\\/[A-Za-z0-9._@+%/-]{3,290}$" } } }
+        }
+      ]
+    },
+    "credential": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "provider", "purpose", "secretRef", "consumers", "owner", "source"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "provider": { "type": "string", "minLength": 1 },
+        "purpose": { "type": "string", "minLength": 1 },
+        "secretRef": { "$ref": "#/$defs/credentialRef" },
+        "consumers": {
+          "type": "array",
+          "maxItems": 50,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/id" }
+        },
+        "owner": { "$ref": "#/$defs/id" },
+        "payer": { "$ref": "#/$defs/id" },
+        "source": { "enum": ["operator", "agent", "integration"] },
+        "lastVerifiedAt": { "type": "string", "format": "date-time" },
+        "rotationDueAt": { "type": "string", "format": "date-time" }
+      }
+    },
     "service": {
       "type": "object",
       "additionalProperties": false,
@@ -197,12 +349,19 @@
         "environment": { "type": "string", "minLength": 1 },
         "host": { "$ref": "#/$defs/id" },
         "runtime": { "type": "string", "minLength": 1 },
+        "runtimeIdentifier": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 150,
+          "pattern": "^[A-Za-z0-9_.@:-]+$"
+        },
         "mode": { "enum": ["always-on", "on-demand", "managed", "internal"] },
         "visibility": { "enum": ["public", "authenticated", "tailnet", "local", "internal"] },
         "description": { "type": "string", "minLength": 1 },
         "url": { "type": "string", "format": "uri", "pattern": "^https?://" },
         "endpoint": { "$ref": "#/$defs/serviceEndpoint" },
         "readiness": { "$ref": "#/$defs/readiness" },
+        "stewardship": { "$ref": "#/$defs/stewardship" },
         "links": {
           "type": "array",
           "maxItems": 50,

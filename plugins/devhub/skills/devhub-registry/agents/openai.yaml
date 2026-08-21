@@ -1,6 +1,6 @@
 interface:
   display_name: "DevHub Registry"
-  short_description: "Sync projects and inspect operational readiness"
-  default_prompt: "Use $devhub-registry to reconcile this project with DevHub or review the portfolio for evidence-backed App Passport gaps."
+  short_description: "The home for what you shipped"
+  default_prompt: "Use $devhub-registry to set up or refresh my DevHub: start with the read-only connector plan, explain detected local markers without claiming account access, build or reconcile the reviewed map, and propose the safest next step without reading secrets, starting authorization or executing production actions."
 policy:
   allow_implicit_invocation: true

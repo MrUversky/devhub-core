@@ -3,7 +3,7 @@ id: devhub
 title: DevHub
 registration: native
 aliases: [Service registry]
-description: Self-hosted operational map running with a fictional demo catalog.
+description: Self-hosted operational map for services and projects.
 lifecycle: active
 kind: platform
 repository: example/devhub
@@ -55,6 +55,6 @@ services:
           check: restore
           state: unknown
           source: catalog
-          note: No isolated restore exercise has been recorded for this fictional installation.
+          note: No isolated restore exercise has been recorded for this installation.
     commands:
       verify: npm test

@@ -1,0 +1,66 @@
+version: 1
+id: studio-store
+title: Studio Store
+registration: overlay
+aliases: [Demo storefront]
+description: Customer-facing storefront with a healthy web surface and a degraded checkout worker.
+lifecycle: production
+kind: product
+repository: example/studio-store
+tags: [demo, commerce]
+services:
+  - id: storefront
+    name: Storefront
+    kind: website
+    environment: production
+    host: managed-cloud
+    runtime: managed
+    mode: managed
+    visibility: public
+    url: https://store.example.test
+    reported:
+      state: up
+      observedAt: 2026-08-13T12:00:00Z
+      note: The managed storefront deployment was reported healthy.
+    readiness:
+      profile: customer-facing
+      owner: Example commerce team
+      dataClassification: personal
+      costModel: metered
+      deployment:
+        source: integration
+        provider: Example Cloud
+        revision: storefront-demo-18
+        deployedAt: 2026-08-13T11:30:00Z
+      dependencies:
+        - id: checkout-api
+          kind: payment
+          name: Checkout API
+          criticality: required
+          provider: Example Payments
+      evidence:
+        - id: storefront-monitoring
+          check: monitoring
+          state: verified
+          source: integration
+          note: Synthetic monitoring checked the storefront.
+          observedAt: 2026-08-13T12:00:00Z
+          validUntil: 2026-09-13T12:00:00Z
+        - id: storefront-alerting
+          check: alerting
+          state: unknown
+          source: catalog
+          note: No reviewed alert-delivery evidence is attached to this service.
+
+  - id: checkout-worker
+    name: Checkout worker
+    kind: worker
+    environment: production
+    host: managed-cloud
+    runtime: managed
+    mode: managed
+    visibility: internal
+    reported:
+      state: degraded
+      observedAt: 2026-08-13T12:00:00Z
+      note: The retry backlog is elevated; checkout processing is degraded.

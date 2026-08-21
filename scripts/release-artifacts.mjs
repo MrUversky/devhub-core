@@ -1,15 +1,23 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
-  cp, lstat, mkdir, mkdtemp, readFile, readdir, realpath, rename, rmdir, rm, writeFile,
+  copyFile, cp, lstat, mkdir, mkdtemp, readFile, readdir, realpath, rename, rmdir, rm, writeFile,
 } from "node:fs/promises";
 import path from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
+import { inspectRuntimeArchive } from "./devhub-install.mjs";
+import { scanPublicExport } from "./scan-public-export.mjs";
 import { verifyPublicManifest } from "./verify-public-manifest.mjs";
 
 const manifestName = "PUBLIC_EXPORT_MANIFEST.json";
 const evidenceName = "RELEASE-EVIDENCE.json";
 const checksumsName = "SHA256SUMS";
+const runtimeManifestName = "DEVHUB_RUNTIME_MANIFEST.json";
+const runtimeAllowlistName = "config/user-runtime-files.txt";
+const releaseIntentName = "config/release-intent.json";
+const sha256Pattern = /^[a-f0-9]{64}$/;
+const semanticVersionPattern = /^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/;
+const releaseContractRoot = path.resolve(import.meta.dirname, "..");
 
 function execFileWithDeadline(file, args, options, timeoutMs) {
   return new Promise((resolve, reject) => {
@@ -44,6 +52,59 @@ function compareCodepoints(left, right) {
 
 function digest(contents) {
   return createHash("sha256").update(contents).digest("hex");
+}
+
+function validateApplicationDocuments(packageDocument, lockDocument, label) {
+  const versions = [
+    ["package.json", packageDocument?.version],
+    ["package-lock.json", lockDocument?.version],
+    ["package-lock.json packages[\"\"]", lockDocument?.packages?.[""]?.version],
+  ];
+  for (const [source, version] of versions) {
+    if (typeof version !== "string" || !semanticVersionPattern.test(version)) {
+      throw new Error(`${label} ${source} has an invalid application version.`);
+    }
+  }
+  if (new Set(versions.map(([, version]) => version)).size !== 1) {
+    throw new Error(`${label} package.json and package-lock.json application versions disagree.`);
+  }
+  return packageDocument.version;
+}
+
+function validateReleaseIntent(intentDocument, label) {
+  if (!intentDocument || typeof intentDocument !== "object" || Array.isArray(intentDocument)
+      || Object.keys(intentDocument).length !== 1
+      || !semanticVersionPattern.test(intentDocument.applicationVersion ?? "")) {
+    throw new Error(`${label} ${releaseIntentName} must contain only one semantic applicationVersion.`);
+  }
+  return intentDocument.applicationVersion;
+}
+
+function validateReleaseDocuments(packageDocument, lockDocument, intentDocument, label) {
+  const applicationVersion = validateApplicationDocuments(packageDocument, lockDocument, label);
+  const intendedVersion = validateReleaseIntent(intentDocument, label);
+  if (applicationVersion !== intendedVersion) {
+    throw new Error(`${label} application version ${applicationVersion} does not match release intent ${intendedVersion}.`);
+  }
+  return applicationVersion;
+}
+
+export async function readApplicationReleaseVersion(root) {
+  const resolved = path.resolve(root);
+  return validateReleaseDocuments(
+    JSON.parse(await readFile(path.join(resolved, "package.json"), "utf8")),
+    JSON.parse(await readFile(path.join(resolved, "package-lock.json"), "utf8")),
+    JSON.parse(await readFile(path.join(resolved, releaseIntentName), "utf8")),
+    "Release source",
+  );
+}
+
+async function resolveIntendedVersion(intendedVersion) {
+  if (intendedVersion === null) return readApplicationReleaseVersion(releaseContractRoot);
+  if (typeof intendedVersion !== "string" || !semanticVersionPattern.test(intendedVersion)) {
+    throw new Error("Intended application version must be semantic.");
+  }
+  return intendedVersion;
 }
 
 function isInside(parent, candidate) {
@@ -131,6 +192,157 @@ async function createSourceArchive(snapshot, archiveRoot, relativeFiles) {
   return archive;
 }
 
+export async function createDeterministicTarGzip(root, archiveRoot, relativeFiles) {
+  return createSourceArchive(path.resolve(root), archiveRoot, relativeFiles);
+}
+
+function validateRelativePath(relative, label) {
+  if (!relative || relative.includes("\\") || path.posix.isAbsolute(relative)
+      || path.posix.normalize(relative) !== relative || relative === ".." || relative.startsWith("../")) {
+    throw new Error(`${label} must be a normalized relative POSIX path: ${JSON.stringify(relative)}`);
+  }
+}
+
+async function readRuntimeAllowlist(snapshot, publicManifest) {
+  const lines = (await readFile(path.join(snapshot, runtimeAllowlistName), "utf8"))
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#"));
+  if (!lines.length || new Set(lines).size !== lines.length
+      || JSON.stringify(lines) !== JSON.stringify([...lines].sort(compareCodepoints))) {
+    throw new Error("User runtime allowlist must be non-empty, unique and codepoint-sorted.");
+  }
+  const publicPaths = new Set(publicManifest.files.map((entry) => entry.path));
+  for (const relative of lines) {
+    validateRelativePath(relative, "User runtime allowlist entry");
+    if (!publicPaths.has(relative)) throw new Error(`User runtime file is absent from the sanitized public manifest: ${relative}`);
+    if (relative.startsWith("catalog/") || relative === "config/connection-profiles.json"
+        || relative.startsWith("app/generated/") || relative === "public/catalog.json") {
+      throw new Error(`User runtime allowlist crosses the external state boundary: ${relative}`);
+    }
+  }
+  return lines;
+}
+
+async function collectRuntimeFiles(runtimeRoot) {
+  const files = [];
+  async function walk(directory) {
+    const entries = (await readdir(directory, { withFileTypes: true }))
+      .sort((left, right) => compareCodepoints(left.name, right.name));
+    for (const entry of entries) {
+      const absolute = path.join(directory, entry.name);
+      const relative = path.relative(runtimeRoot, absolute).split(path.sep).join("/");
+      const details = await lstat(absolute);
+      if (details.isSymbolicLink()) throw new Error(`User runtime may not contain symbolic links: ${relative}`);
+      if (details.isDirectory()) await walk(absolute);
+      else if (details.isFile()) {
+        const contents = await readFile(absolute);
+        files.push({
+          path: relative,
+          sha256: digest(contents),
+          mode: details.mode & 0o111 ? 0o755 : 0o644,
+        });
+      } else throw new Error(`User runtime may contain only regular files: ${relative}`);
+    }
+  }
+  await walk(runtimeRoot);
+  return files.sort((left, right) => compareCodepoints(left.path, right.path));
+}
+
+async function scanRuntimeFingerprints(runtimeRoot, files, fingerprintFile) {
+  if (!fingerprintFile) return;
+  const fingerprints = (await readFile(fingerprintFile, "utf8"))
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#"))
+    .map((value) => ({ original: value, folded: Buffer.from(value.toLocaleLowerCase("en-US")) }));
+  for (const file of files) {
+    const contents = await readFile(path.join(runtimeRoot, ...file.path.split("/")));
+    const folded = Buffer.from(contents.toString("utf8").toLocaleLowerCase("en-US"));
+    for (const fingerprint of fingerprints) {
+      if (folded.includes(fingerprint.folded)) {
+        throw new Error(`User runtime contains private fingerprint ${JSON.stringify(fingerprint.original)} in ${file.path}.`);
+      }
+    }
+  }
+}
+
+async function buildRuntimePackage(snapshot, publicManifest, packageDocument, parent, fingerprintFile) {
+  const runtimeRoot = await mkdtemp(path.join(parent, ".devhub-runtime-package-"));
+  try {
+    const allowlist = await readRuntimeAllowlist(snapshot, publicManifest);
+    for (const relative of allowlist) {
+      const source = path.join(snapshot, relative);
+      const destination = path.join(runtimeRoot, relative);
+      const details = await lstat(source);
+      if (!details.isFile() || details.isSymbolicLink()) throw new Error(`User runtime input must be a regular file: ${relative}`);
+      await mkdir(path.dirname(destination), { recursive: true });
+      await copyFile(source, destination);
+    }
+
+    const runtimePackagePath = path.join(runtimeRoot, "package.json");
+    const runtimePackage = JSON.parse(await readFile(runtimePackagePath, "utf8"));
+    const runtimeLockPath = path.join(runtimeRoot, "package-lock.json");
+    const runtimeLock = JSON.parse(await readFile(runtimeLockPath, "utf8"));
+    runtimePackage.private = true;
+    runtimePackage.scripts = { devhub: "node scripts/devhub.mjs" };
+    runtimePackage.dependencies = { yaml: runtimePackage.dependencies.yaml };
+    delete runtimePackage.devDependencies;
+    await writeFile(runtimePackagePath, `${JSON.stringify(runtimePackage, null, 2)}\n`);
+    const prunedLock = {
+      name: runtimePackage.name,
+      version: runtimePackage.version,
+      lockfileVersion: runtimeLock.lockfileVersion,
+      requires: true,
+      packages: {
+        "": {
+          name: runtimePackage.name,
+          version: runtimePackage.version,
+          license: runtimePackage.license,
+          dependencies: runtimePackage.dependencies,
+          bin: runtimePackage.bin,
+          engines: runtimePackage.engines,
+        },
+        "node_modules/yaml": runtimeLock.packages["node_modules/yaml"],
+      },
+    };
+    if (!prunedLock.packages["node_modules/yaml"]?.integrity) throw new Error("Sanitized lockfile is missing the pinned YAML runtime dependency.");
+    await writeFile(runtimeLockPath, `${JSON.stringify(prunedLock, null, 2)}\n`);
+    await scanPublicExport(runtimeRoot, { fingerprintFile });
+
+    await execFileWithDeadline(
+      "npm",
+      ["ci", "--ignore-scripts", "--omit=dev", "--offline", "--no-audit", "--no-fund"],
+      { cwd: runtimeRoot, encoding: "utf8", maxBuffer: 40 * 1024 * 1024 },
+      5 * 60 * 1000,
+    );
+    await rm(path.join(runtimeRoot, "node_modules/.bin"), { recursive: true, force: true });
+    const sbom = await createNormalizedSbom(runtimeRoot, runtimePackage);
+    const files = await collectRuntimeFiles(runtimeRoot);
+    await scanRuntimeFingerprints(runtimeRoot, files, fingerprintFile);
+    const manifest = {
+      formatVersion: 1,
+      packageName: packageDocument.name,
+      version: packageDocument.version,
+      source: publicManifest.source,
+      node: ">=22.13.0",
+      entrypoint: "scripts/devhub.mjs",
+      installer: "scripts/devhub-install.mjs",
+      privacy: { catalogIncluded: false, profilesIncluded: false },
+      files,
+    };
+    const manifestContents = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);
+    await writeFile(path.join(runtimeRoot, runtimeManifestName), manifestContents);
+    const archiveRoot = `devhub-cli-v${packageDocument.version}`;
+    const archive = await createSourceArchive(runtimeRoot, archiveRoot, [runtimeManifestName, ...files.map((entry) => entry.path)].sort(compareCodepoints));
+    const inspected = inspectRuntimeArchive(archive, { allowDirty: publicManifest.source.state !== "clean" });
+    if (JSON.stringify(inspected.manifest) !== JSON.stringify(manifest)) throw new Error("Generated user runtime manifest did not round-trip.");
+    return { archive, manifest, manifestContents, sbom };
+  } finally {
+    await rm(runtimeRoot, { recursive: true, force: true });
+  }
+}
+
 async function createNormalizedSbom(snapshot, packageDocument) {
   const { stdout } = await execFileWithDeadline(
     "npm",
@@ -213,28 +425,58 @@ function parseChecksums(contents) {
   return entries;
 }
 
-export async function verifyReleaseArtifacts(directory) {
+export async function verifyReleaseArtifacts(directory, { intendedVersion = null } = {}) {
   const root = path.resolve(directory);
   const rootStat = await lstat(root);
-  if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) {
-    throw new Error("Release evidence root must be a real directory.");
-  }
-  const evidence = JSON.parse(await readFile(path.join(root, evidenceName), "utf8"));
-  if (evidence.formatVersion !== 1 || !/^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(evidence.version ?? "")) {
+  if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw new Error("Release evidence root must be a real directory.");
+  const expectedVersion = await resolveIntendedVersion(intendedVersion);
+  const evidenceContents = await readFile(path.join(root, evidenceName));
+  const evidence = JSON.parse(evidenceContents);
+  if (![2, 3].includes(evidence.formatVersion) || !semanticVersionPattern.test(evidence.version ?? "")) {
     throw new Error("Release evidence has an unsupported format or version.");
   }
-  for (const [label, entry] of [["archive", evidence.archive], ["sbom", evidence.sbom]]) {
-    if (!entry || !/^[a-f0-9]{64}$/.test(entry.sha256 ?? "")) throw new Error(`Release ${label} evidence is invalid.`);
+  if (evidence.version !== expectedVersion) {
+    throw new Error(`Release evidence application version ${evidence.version} does not match intended application version ${expectedVersion}.`);
+  }
+  for (const [label, entry] of [
+    ["archive", evidence.archive],
+    ["runtime", evidence.runtime],
+    ["installer", evidence.installer],
+    ["sbom", evidence.sbom],
+  ]) {
+    if (!entry || !sha256Pattern.test(entry.sha256 ?? "")) throw new Error(`Release ${label} evidence is invalid.`);
     validateArtifactName(entry.file, `Release ${label}`);
   }
   if (!evidence.packageAllowlist || evidence.packageAllowlist.file !== manifestName
       || !Number.isInteger(evidence.packageAllowlist.entries) || evidence.packageAllowlist.entries < 1
-      || !/^[a-f0-9]{64}$/.test(evidence.packageAllowlist.sha256 ?? "")) {
-    throw new Error("Release package allowlist evidence is invalid.");
+      || !sha256Pattern.test(evidence.packageAllowlist.sha256 ?? "")
+      || evidence.runtime.manifest?.file !== runtimeManifestName
+      || !Number.isInteger(evidence.runtime.manifest.entries) || evidence.runtime.manifest.entries < 1
+      || !sha256Pattern.test(evidence.runtime.manifest.sha256 ?? "")) {
+    throw new Error("Release package allowlist or runtime manifest evidence is invalid.");
+  }
+  if (evidence.formatVersion === 3
+      && (!evidence.privacy || evidence.privacy.status !== "passed"
+        || evidence.privacy.scanner !== "scripts/scan-public-export.mjs"
+        || JSON.stringify(evidence.privacy.scopes) !== JSON.stringify(["public-source", "user-runtime"])
+        || (evidence.privacy.fingerprintPolicySha256 !== null
+          && !sha256Pattern.test(evidence.privacy.fingerprintPolicySha256 ?? "")))) {
+    throw new Error("Release privacy-scan evidence is invalid.");
+  }
+  const expectedArtifactNames = {
+    archive: `${evidence.packageName}-v${evidence.version}-source.tar.gz`,
+    runtime: `devhub-cli-v${evidence.version}.tar.gz`,
+    installer: `devhub-install-v${evidence.version}.mjs`,
+    sbom: `${evidence.packageName}-v${evidence.version}-sbom.cdx.json`,
+  };
+  for (const [label, expectedName] of Object.entries(expectedArtifactNames)) {
+    if (evidence[label].file !== expectedName) {
+      throw new Error(`Release ${label} filename does not match the intended application version.`);
+    }
   }
 
-  const expectedFiles = [checksumsName, evidenceName, evidence.archive.file, evidence.sbom.file]
-    .sort(compareCodepoints);
+  const artifactEntries = [evidence.archive, evidence.runtime, evidence.installer, evidence.sbom];
+  const expectedFiles = [checksumsName, evidenceName, ...artifactEntries.map((entry) => entry.file)].sort(compareCodepoints);
   const actualFiles = (await readdir(root, { withFileTypes: true })).map((entry) => {
     if (!entry.isFile() || entry.isSymbolicLink()) throw new Error(`Unexpected non-file release artifact: ${entry.name}`);
     return entry.name;
@@ -242,23 +484,23 @@ export async function verifyReleaseArtifacts(directory) {
   if (JSON.stringify(actualFiles) !== JSON.stringify(expectedFiles)) {
     throw new Error("Release evidence directory contains missing or unexpected files.");
   }
-
-  const archive = await readFile(path.join(root, evidence.archive.file));
-  const sbomContents = await readFile(path.join(root, evidence.sbom.file));
-  if (digest(archive) !== evidence.archive.sha256 || digest(sbomContents) !== evidence.sbom.sha256) {
-    throw new Error("Release artifact digest does not match its evidence.");
+  const artifactContents = new Map();
+  for (const entry of artifactEntries) {
+    const contents = await readFile(path.join(root, entry.file));
+    if (digest(contents) !== entry.sha256) throw new Error("Release artifact digest does not match its evidence.");
+    artifactContents.set(entry.file, contents);
   }
-  const sbom = JSON.parse(sbomContents);
+
+  const sbom = JSON.parse(artifactContents.get(evidence.sbom.file));
   if (sbom.bomFormat !== "CycloneDX" || sbom.specVersion !== "1.5"
       || sbom.metadata?.component?.name !== evidence.packageName
       || sbom.metadata?.component?.version !== evidence.version) {
     throw new Error("Release SBOM identity does not match its evidence.");
   }
 
-  const archiveFiles = readSourceArchive(archive);
+  const archiveFiles = readSourceArchive(artifactContents.get(evidence.archive.file));
   const archiveRoot = `${evidence.packageName}-v${evidence.version}`;
-  const manifestPath = `${archiveRoot}/${manifestName}`;
-  const manifestContents = archiveFiles.get(manifestPath);
+  const manifestContents = archiveFiles.get(`${archiveRoot}/${manifestName}`);
   if (!manifestContents || digest(manifestContents) !== evidence.packageAllowlist.sha256) {
     throw new Error("Release archive does not contain the evidenced public manifest.");
   }
@@ -267,27 +509,62 @@ export async function verifyReleaseArtifacts(directory) {
     throw new Error("Release archive public manifest count does not match its evidence.");
   }
   const expectedArchivePaths = [manifestName, ...manifest.files.map((entry) => entry.path)]
-    .map((relative) => `${archiveRoot}/${relative}`)
-    .sort(compareCodepoints);
-  const actualArchivePaths = [...archiveFiles.keys()].sort(compareCodepoints);
-  if (JSON.stringify(actualArchivePaths) !== JSON.stringify(expectedArchivePaths)) {
+    .map((relative) => `${archiveRoot}/${relative}`).sort(compareCodepoints);
+  if (JSON.stringify([...archiveFiles.keys()].sort(compareCodepoints)) !== JSON.stringify(expectedArchivePaths)) {
     throw new Error("Release archive violates the public package file allowlist.");
   }
   for (const entry of manifest.files) {
     const contents = archiveFiles.get(`${archiveRoot}/${entry.path}`);
-    if (!contents || digest(contents) !== entry.sha256) {
-      throw new Error(`Release archive package checksum mismatch: ${entry.path}`);
-    }
+    if (!contents || digest(contents) !== entry.sha256) throw new Error(`Release archive package checksum mismatch: ${entry.path}`);
   }
   if (JSON.stringify(manifest.source) !== JSON.stringify(evidence.source)) {
     throw new Error("Release archive source provenance does not match its evidence.");
   }
+  const archivedPackage = archiveFiles.get(`${archiveRoot}/package.json`);
+  const archivedLock = archiveFiles.get(`${archiveRoot}/package-lock.json`);
+  const archivedIntent = archiveFiles.get(`${archiveRoot}/${releaseIntentName}`);
+  if (!archivedPackage || !archivedLock || !archivedIntent) {
+    throw new Error("Release archive is missing application version ownership files.");
+  }
+  const archivedVersion = validateReleaseDocuments(
+    JSON.parse(archivedPackage),
+    JSON.parse(archivedLock),
+    JSON.parse(archivedIntent),
+    "Release archive",
+  );
+  if (archivedVersion !== evidence.version) {
+    throw new Error("Release archive application version does not match its evidence.");
+  }
+
+  const runtime = inspectRuntimeArchive(artifactContents.get(evidence.runtime.file), {
+    allowDirty: evidence.source.state !== "clean",
+  });
+  const runtimeManifestEntry = runtime.files.get(runtimeManifestName);
+  if (!runtimeManifestEntry || digest(runtimeManifestEntry.contents) !== evidence.runtime.manifest.sha256
+      || runtime.manifest.files.length !== evidence.runtime.manifest.entries
+      || runtime.manifest.version !== evidence.version
+      || JSON.stringify(runtime.manifest.source) !== JSON.stringify(evidence.source)) {
+    throw new Error("Release runtime manifest does not match its evidence.");
+  }
+  const runtimePackage = runtime.files.get("package.json");
+  const runtimeLock = runtime.files.get("package-lock.json");
+  if (!runtimePackage || !runtimeLock
+      || validateApplicationDocuments(
+        JSON.parse(runtimePackage.contents),
+        JSON.parse(runtimeLock.contents),
+        "Release runtime",
+      ) !== evidence.version) {
+    throw new Error("Release runtime application version does not match its evidence.");
+  }
+  const installerSource = manifest.files.find((entry) => entry.path === "scripts/devhub-install.mjs");
+  if (!installerSource || installerSource.sha256 !== evidence.installer.sourceSha256
+      || digest(artifactContents.get(evidence.installer.file)) !== installerSource.sha256) {
+    throw new Error("Release installer does not match the sanitized public snapshot.");
+  }
 
   const checksumEntries = parseChecksums(await readFile(path.join(root, checksumsName), "utf8"));
-  const evidenceContents = await readFile(path.join(root, evidenceName));
   const expectedChecksums = [
-    { file: evidence.archive.file, sha256: evidence.archive.sha256 },
-    { file: evidence.sbom.file, sha256: evidence.sbom.sha256 },
+    ...artifactEntries.map((entry) => ({ file: entry.file, sha256: entry.sha256 })),
     { file: evidenceName, sha256: digest(evidenceContents) },
   ].sort((left, right) => compareCodepoints(left.file, right.file));
   if (JSON.stringify(checksumEntries) !== JSON.stringify(expectedChecksums)) {
@@ -296,38 +573,46 @@ export async function verifyReleaseArtifacts(directory) {
   return { version: evidence.version, files: actualFiles.length, source: evidence.source };
 }
 
-export async function buildReleaseArtifacts({ snapshot: inputSnapshot, output: inputOutput, allowDirty = false }) {
+export async function buildReleaseArtifacts({
+  snapshot: inputSnapshot,
+  output: inputOutput,
+  allowDirty = false,
+  fingerprintFile = null,
+  intendedVersion = null,
+}) {
   const snapshot = await realpath(path.resolve(inputSnapshot));
   const snapshotStat = await lstat(snapshot);
-  if (!snapshotStat.isDirectory() || snapshotStat.isSymbolicLink()) {
-    throw new Error("Release snapshot must be a real directory.");
-  }
+  if (!snapshotStat.isDirectory() || snapshotStat.isSymbolicLink()) throw new Error("Release snapshot must be a real directory.");
   const excludedTopLevels = new Set([".git", ".next", ".vinext", ".wrangler", "dist", "node_modules"]);
   const rootEntries = (await readdir(snapshot)).filter((entry) => !excludedTopLevels.has(entry));
   const verificationRoot = await mkdtemp(path.join(path.dirname(snapshot), ".devhub-release-verify-"));
   try {
     for (const entry of rootEntries) {
       const source = path.join(snapshot, entry);
-      const stat = await lstat(source);
-      if (stat.isSymbolicLink()) throw new Error(`${entry}: symbolic links are not allowed`);
+      const details = await lstat(source);
+      if (details.isSymbolicLink()) throw new Error(`${entry}: symbolic links are not allowed`);
       await cp(source, path.join(verificationRoot, entry), {
-        recursive: stat.isDirectory(),
+        recursive: details.isDirectory(),
         preserveTimestamps: false,
       });
     }
+    await scanPublicExport(verificationRoot, { fingerprintFile });
     await verifyPublicManifest(verificationRoot);
   } finally {
     await rm(verificationRoot, { recursive: true, force: true });
   }
+  const expectedVersion = await resolveIntendedVersion(intendedVersion);
+  const snapshotVersion = await readApplicationReleaseVersion(snapshot);
+  if (snapshotVersion !== expectedVersion) {
+    throw new Error(`Generated public snapshot application version ${snapshotVersion} does not match intended application version ${expectedVersion}.`);
+  }
   const manifestContents = await readFile(path.join(snapshot, manifestName));
   const manifest = JSON.parse(manifestContents);
-  const verification = { source: manifest.source };
-  if (!allowDirty && verification.source.state !== "clean") {
-    throw new Error("Release evidence requires a clean public snapshot.");
-  }
+  if (!allowDirty && manifest.source.state !== "clean") throw new Error("Release evidence requires a clean public snapshot.");
   const packageDocument = JSON.parse(await readFile(path.join(snapshot, "package.json"), "utf8"));
+  const fingerprintPolicySha256 = fingerprintFile ? digest(await readFile(fingerprintFile)) : null;
   if (!/^[a-z0-9][a-z0-9-]*$/.test(packageDocument.name ?? "")
-      || !/^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(packageDocument.version ?? "")) {
+      || !semanticVersionPattern.test(packageDocument.version ?? "")) {
     throw new Error("Public package name or version is not release-safe.");
   }
 
@@ -336,28 +621,30 @@ export async function buildReleaseArtifacts({ snapshot: inputSnapshot, output: i
   await mkdir(outputParent, { recursive: true });
   const canonicalParent = await realpath(outputParent);
   const output = path.join(canonicalParent, path.basename(requestedOutput));
-  if (isInside(snapshot, output) || isInside(output, snapshot)) {
-    throw new Error("Release evidence output must be outside the public snapshot.");
-  }
+  if (isInside(snapshot, output) || isInside(output, snapshot)) throw new Error("Release evidence output must be outside the public snapshot.");
   const existing = await statIfPresent(output);
-  if (existing?.isSymbolicLink() || (existing && !existing.isDirectory())) {
-    throw new Error("Release evidence output must be a real directory.");
-  }
+  if (existing?.isSymbolicLink() || (existing && !existing.isDirectory())) throw new Error("Release evidence output must be a real directory.");
   if (existing && (await readdir(output)).length) throw new Error(`Release evidence output must be empty: ${output}`);
 
   const archiveRoot = `${packageDocument.name}-v${packageDocument.version}`;
   const archiveName = `${archiveRoot}-source.tar.gz`;
+  const runtimeName = `devhub-cli-v${packageDocument.version}.tar.gz`;
+  const installerName = `devhub-install-v${packageDocument.version}.mjs`;
   const sbomName = `${archiveRoot}-sbom.cdx.json`;
   const relativeFiles = [manifestName, ...manifest.files.map((entry) => entry.path)].sort(compareCodepoints);
   const staging = await mkdtemp(path.join(canonicalParent, ".devhub-release-staging-"));
   let activeStaging = staging;
   try {
     const archive = await createSourceArchive(snapshot, archiveRoot, relativeFiles);
-    const sbom = await createNormalizedSbom(snapshot, packageDocument);
+    const runtime = await buildRuntimePackage(snapshot, manifest, packageDocument, canonicalParent, fingerprintFile);
+    const installer = await readFile(path.join(snapshot, "scripts/devhub-install.mjs"));
+    const sbom = runtime.sbom;
     await writeFile(path.join(staging, archiveName), archive);
+    await writeFile(path.join(staging, runtimeName), runtime.archive);
+    await writeFile(path.join(staging, installerName), installer, { mode: 0o755 });
     await writeFile(path.join(staging, sbomName), sbom);
     const evidence = {
-      formatVersion: 1,
+      formatVersion: 3,
       packageName: packageDocument.name,
       version: packageDocument.version,
       source: manifest.source,
@@ -366,22 +653,36 @@ export async function buildReleaseArtifacts({ snapshot: inputSnapshot, output: i
         entries: manifest.files.length,
         sha256: digest(manifestContents),
       },
+      privacy: {
+        status: "passed",
+        scanner: "scripts/scan-public-export.mjs",
+        scopes: ["public-source", "user-runtime"],
+        fingerprintPolicySha256,
+      },
       archive: { file: archiveName, sha256: digest(archive) },
+      runtime: {
+        file: runtimeName,
+        sha256: digest(runtime.archive),
+        manifest: { file: runtimeManifestName, entries: runtime.manifest.files.length, sha256: digest(runtime.manifestContents) },
+      },
+      installer: { file: installerName, sha256: digest(installer), sourceSha256: digest(installer) },
       sbom: { file: sbomName, format: "CycloneDX-1.5", sha256: digest(sbom) },
     };
-    const evidenceContents = Buffer.from(`${JSON.stringify(evidence, null, 2)}\n`);
-    await writeFile(path.join(staging, evidenceName), evidenceContents);
+    const releaseEvidenceContents = Buffer.from(`${JSON.stringify(evidence, null, 2)}\n`);
+    await writeFile(path.join(staging, evidenceName), releaseEvidenceContents);
     const sums = [
       { file: archiveName, sha256: evidence.archive.sha256 },
+      { file: runtimeName, sha256: evidence.runtime.sha256 },
+      { file: installerName, sha256: evidence.installer.sha256 },
       { file: sbomName, sha256: evidence.sbom.sha256 },
-      { file: evidenceName, sha256: digest(evidenceContents) },
+      { file: evidenceName, sha256: digest(releaseEvidenceContents) },
     ].sort((left, right) => compareCodepoints(left.file, right.file));
     await writeFile(path.join(staging, checksumsName), `${sums.map((entry) => `${entry.sha256}  ${entry.file}`).join("\n")}\n`);
-    await verifyReleaseArtifacts(staging);
+    await verifyReleaseArtifacts(staging, { intendedVersion: expectedVersion });
     if (existing) await rmdir(output);
     await rename(staging, output);
     activeStaging = null;
-    return { output, version: packageDocument.version, files: 4 };
+    return { output, version: packageDocument.version, files: 6 };
   } finally {
     if (activeStaging) await rm(activeStaging, { recursive: true, force: true });
   }

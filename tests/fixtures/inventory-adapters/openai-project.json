@@ -1,0 +1,9 @@
+{
+  "id": "proj_fictional_pocket_ops",
+  "object": "organization.project",
+  "name": "Fictional Pocket Ops",
+  "created_at": 1785542400,
+  "archived_at": null,
+  "status": "active",
+  "private_note": "discard this provider field"
+}

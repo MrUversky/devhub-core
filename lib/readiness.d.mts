@@ -1,6 +1,18 @@
-import type { ReadinessCheck, ReadinessEvidence, ServiceReadiness } from "./catalog";
+import type { Project, ReadinessCheck, ReadinessEvidence, Service, ServiceReadiness } from "./catalog";
 
-export type ReadinessProfile = ServiceReadiness["profile"];
+export type ReadinessProfile = NonNullable<ServiceReadiness["profile"]>;
+export type ReadinessFieldProvenance = "service" | "project" | "absent";
+export type EffectiveServiceReadiness = ServiceReadiness & { profile?: ReadinessProfile };
+export type ServiceReadinessContext = {
+  readiness: EffectiveServiceReadiness | null;
+  fields: {
+    profile: { value: ReadinessProfile | null; provenance: ReadinessFieldProvenance };
+    owner: { value: string | null; provenance: ReadinessFieldProvenance };
+    dataClassification: { value: NonNullable<ServiceReadiness["dataClassification"]> | null; provenance: ReadinessFieldProvenance };
+    costModel: { value: NonNullable<ServiceReadiness["costModel"]> | null; provenance: ReadinessFieldProvenance };
+  };
+  evidenceProvenance: "service" | "absent";
+};
 export type EffectiveReadinessState = ReadinessEvidence["state"] | "stale";
 export type ReadinessAssessmentItem = {
   check: ReadinessCheck;
@@ -22,6 +34,7 @@ export type ReadinessAssessment = {
 export const READINESS_CHECKS: readonly ReadinessCheck[];
 export const PROFILE_EXPECTATIONS: Record<ReadinessProfile, readonly ReadinessCheck[]>;
 export const RECOVERY_CHECKS: readonly ReadinessCheck[];
+export function resolveServiceReadinessContext(project: Project | null | undefined, service: Service | null | undefined): ServiceReadinessContext;
 export function evaluateReadiness(
   readiness: ServiceReadiness | null | undefined,
   options?: { now?: Date | string | number },

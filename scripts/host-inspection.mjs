@@ -11,6 +11,11 @@ const unitPattern = /^[A-Za-z0-9_.@:-]+\.service$/;
 const launchdPattern = /^[A-Za-z0-9_.-]+$/;
 const composeFilenames = ["compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml"];
 const operationalCommands = ["start", "stop", "restart", "logs"];
+const gitHubOwnerPattern = /^[a-z0-9](?:[a-z0-9-]{0,38})$/;
+const gitHubRepositoryPattern = /^[a-z0-9._-]{1,100}$/;
+const gitOriginTimeoutMs = 2_000;
+const gitOriginMaxBytes = 4 * 1024;
+const maxReviewedWorkspaces = 100;
 
 export class HostInspectionError extends Error {
   constructor(code, message) {
@@ -29,25 +34,63 @@ async function defaultFileExists(filename) {
   }
 }
 
+function throwIfAborted(signal) {
+  if (signal?.aborted) {
+    throw new HostInspectionError("inspection-aborted", "The bounded host inspection was aborted");
+  }
+}
+
 async function defaultRunner(command, args, options = {}) {
-  const allowed = new Set(["systemctl", "launchctl", "docker", "docker-compose"]);
+  const allowed = new Set(["systemctl", "launchctl", "docker", "docker-compose", "git"]);
   if (!allowed.has(command)) throw new HostInspectionError("unsafe-inspection-command", `Inspection does not allow ${command}`);
+  throwIfAborted(options.signal);
   try {
     const result = await execFileAsync(command, args, {
       cwd: options.cwd,
-      env: { ...process.env, DOCKER_CLI_HINTS: "false" },
-      timeout: 5000,
-      maxBuffer: 1024 * 1024,
+      env: { ...process.env, DOCKER_CLI_HINTS: "false", GIT_TERMINAL_PROMPT: "0" },
+      timeout: options.timeoutMs ?? 5_000,
+      maxBuffer: options.maxBuffer ?? 1024 * 1024,
+      shell: false,
+      windowsHide: true,
+      ...(options.signal ? { signal: options.signal } : {}),
     });
     return { ok: true, stdout: result.stdout, unavailable: false };
   } catch (error) {
+    if (options.signal?.aborted || error?.name === "AbortError") throwIfAborted(options.signal ?? { aborted: true });
     return {
       ok: false,
       stdout: typeof error?.stdout === "string" ? error.stdout : "",
       unavailable: error?.code === "ENOENT",
-      timedOut: error?.killed === true,
+      timedOut: error?.killed === true || error?.code === "ETIMEDOUT",
     };
   }
+}
+
+function canonicalGitHubRepository(raw) {
+  if (typeof raw !== "string" || Buffer.byteLength(raw, "utf8") > gitOriginMaxBytes) return null;
+  const lines = raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length !== 1 || lines[0].includes("%")) return null;
+  const remote = lines[0];
+  let owner;
+  let name;
+  const scp = remote.match(/^git@github\.com:([^/]+)\/([^/]+)$/i);
+  if (scp) {
+    [, owner, name] = scp;
+  } else {
+    let parsed;
+    try { parsed = new URL(remote); } catch { return null; }
+    const https = parsed.protocol === "https:" && !parsed.username && !parsed.password;
+    const ssh = parsed.protocol === "ssh:" && parsed.username === "git" && !parsed.password;
+    if ((!https && !ssh) || parsed.hostname.toLowerCase() !== "github.com" || parsed.port || parsed.search || parsed.hash) return null;
+    const parts = parsed.pathname.replace(/^\/+|\/+$/g, "").split("/");
+    if (parts.length !== 2) return null;
+    [owner, name] = parts;
+  }
+  name = name.replace(/\.git$/i, "");
+  owner = owner.toLowerCase();
+  name = name.toLowerCase();
+  if (!gitHubOwnerPattern.test(owner) || !gitHubRepositoryPattern.test(name) || name.endsWith(".git")) return null;
+  return { provider: "github", owner, name };
 }
 
 function safeCommands(service) {
@@ -138,6 +181,38 @@ function serviceMatch(project, service, source, identifier, state, details = {})
 
 function workspaceFor(project, hostId) {
   return (project.workspaces ?? []).filter((workspace) => workspace.host === hostId);
+}
+
+async function inspectProjectRepository(project, context) {
+  const workspaces = workspaceFor(project, context.host.id);
+  if (!workspaces.length) return null;
+  if (workspaces.length > maxReviewedWorkspaces) return { source: sourceUnavailable("git-origin"), match: null };
+  const repositories = [];
+  for (const workspace of workspaces) {
+    const result = await context.runner("git", ["-C", workspace.path, "remote", "get-url", "origin"], {
+      timeoutMs: gitOriginTimeoutMs,
+      maxBuffer: gitOriginMaxBytes,
+      shell: false,
+    });
+    const source = result.unavailable || result.timedOut
+      ? sourceUnavailable("git-origin", result.timedOut)
+      : { type: "git-origin", available: true, observations: 1 };
+    if (!result.ok || result.unavailable || result.timedOut) return { source, match: null };
+    const repository = canonicalGitHubRepository(result.stdout);
+    if (!repository) return { source, match: null };
+    repositories.push(repository);
+  }
+  const unique = new Map(repositories.map((repository) => [`${repository.owner}/${repository.name}`, repository]));
+  if (unique.size !== 1) return { source: { type: "git-origin", available: true, observations: workspaces.length }, match: null };
+  return {
+    source: { type: "git-origin", available: true, observations: workspaces.length },
+    match: {
+      projectId: project.id,
+      hostId: context.host.id,
+      source: "git-origin",
+      repository: [...unique.values()][0],
+    },
+  };
 }
 
 async function inspectSystemd(project, service, context) {
@@ -260,20 +335,21 @@ async function inspectCompose(project, service, context) {
     return { source: { type: "docker-compose", available: true, observations: 1 }, unknown: unknown(project, service, "compose-config-invalid", "The checked Compose configuration could not be read safely.") };
   }
   const serviceIds = configured.stdout.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
-  if (!serviceIds.includes(service.id)) {
-    return { source: { type: "docker-compose", available: true, observations: 1 }, unknown: unknown(project, service, "compose-service-not-matched", `No exact Compose service named ${service.id} exists in the reviewed workspace.`) };
+  const runtimeIdentifier = service.runtimeIdentifier ?? service.id;
+  if (!serviceIds.includes(runtimeIdentifier)) {
+    return { source: { type: "docker-compose", available: true, observations: 1 }, unknown: unknown(project, service, "compose-service-not-matched", `No exact Compose service named ${runtimeIdentifier} exists in the reviewed workspace.`) };
   }
   const status = await runCompose(composeFile, ["ps", "--all", "--format", "json"], context);
   if (status.unavailable || status.timedOut || !status.ok) {
     return {
       source: { type: "docker-compose", available: !status.unavailable, timedOut: status.timedOut, observations: 2 },
-      match: serviceMatch(project, service, "docker-compose", service.id, "unknown", { definitionPresent: true }),
+      match: serviceMatch(project, service, "docker-compose", runtimeIdentifier, "unknown", { definitionPresent: true }),
     };
   }
-  const rows = parseComposePs(status.stdout).filter((row) => (row.Service ?? row.service) === service.id);
+  const rows = parseComposePs(status.stdout).filter((row) => (row.Service ?? row.service) === runtimeIdentifier);
   return {
     source: { type: "docker-compose", available: true, observations: 2 },
-    match: serviceMatch(project, service, "docker-compose", service.id, rows.length ? composeState(rows) : "stopped", {
+    match: serviceMatch(project, service, "docker-compose", runtimeIdentifier, rows.length ? composeState(rows) : "stopped", {
       definitionPresent: true,
       containersObserved: rows.length,
     }),
@@ -326,6 +402,13 @@ function mergeSources(sources) {
 }
 
 export function formatHostInspection(result) {
+  if (result.status === "unknown") {
+    return [
+      `DevHub host inspection for ${result.hostId}`,
+      `Observed: ${result.observedAt}`,
+      `UNKNOWN ${result.reason}: ${result.message}`,
+    ].join("\n");
+  }
   const lines = [
     `DevHub host inspection for ${result.host.id} (${result.host.name})`,
     `Observed: ${result.observedAt}`,
@@ -339,15 +422,33 @@ export function formatHostInspection(result) {
 }
 
 export async function inspectHost(root, hostId, options = {}) {
+  throwIfAborted(options.signal);
   const paths = options.paths ?? resolveDevHubPaths(root);
   const sourceCatalog = await readSourceCatalog(paths.root, { paths });
+  throwIfAborted(options.signal);
   const host = sourceCatalog.hosts.find((candidate) => candidate.id === hostId);
   if (!host) throw new HostInspectionError("unknown-host", `No reviewed host has id ${hostId}`);
   const observedAt = (options.now ?? new Date()).toISOString();
+  const runner = options.runner ?? defaultRunner;
+  const fileExists = options.fileExists ?? defaultFileExists;
   const context = {
     host,
-    runner: options.runner ?? defaultRunner,
-    fileExists: options.fileExists ?? defaultFileExists,
+    signal: options.signal,
+    async runner(command, args, runOptions = {}) {
+      throwIfAborted(options.signal);
+      const result = await runner(command, args, {
+        ...runOptions,
+        ...(options.signal ? { signal: options.signal } : {}),
+      });
+      throwIfAborted(options.signal);
+      return result;
+    },
+    async fileExists(filename) {
+      throwIfAborted(options.signal);
+      const result = await fileExists(filename);
+      throwIfAborted(options.signal);
+      return result;
+    },
     homeDirectory: options.homeDirectory ?? os.homedir(),
     uid: options.uid ?? (typeof process.getuid === "function" ? process.getuid() : 0),
   };
@@ -355,6 +456,7 @@ export async function inspectHost(root, hostId, options = {}) {
   const reviewedServices = projects.flatMap((project) =>
     project.services.filter((service) => service.host === host.id).map((service) => ({ project, service })));
   const serviceMatches = [];
+  const projectRepositories = [];
   const unknowns = [];
   const sources = [];
 
@@ -363,7 +465,14 @@ export async function inspectHost(root, hostId, options = {}) {
       unknowns.push(unknown(project, service, "managed-host-not-local", "A one-shot local inspection cannot query a managed cloud host."));
     }
   } else {
+    for (const project of projects) {
+      throwIfAborted(options.signal);
+      const observation = await inspectProjectRepository(project, context);
+      if (observation?.source) sources.push(observation.source);
+      if (observation?.match) projectRepositories.push(observation.match);
+    }
     for (const { project, service } of reviewedServices) {
+      throwIfAborted(options.signal);
       let observation;
       const runtime = service.runtime.toLowerCase();
       if (runtime === "systemd") observation = await inspectSystemd(project, service, context);
@@ -378,6 +487,7 @@ export async function inspectHost(root, hostId, options = {}) {
   }
 
   serviceMatches.sort((left, right) => `${left.projectId}/${left.serviceId}`.localeCompare(`${right.projectId}/${right.serviceId}`));
+  projectRepositories.sort((left, right) => left.projectId.localeCompare(right.projectId));
   unknowns.sort((left, right) => `${left.projectId}/${left.serviceId}`.localeCompare(`${right.projectId}/${right.serviceId}`));
   return {
     version: 1,
@@ -395,6 +505,7 @@ export async function inspectHost(root, hostId, options = {}) {
     },
     observedAt,
     sources: mergeSources(sources),
+    projectRepositories,
     serviceMatches,
     unknowns,
   };

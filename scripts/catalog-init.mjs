@@ -86,7 +86,7 @@ export function parseCatalogInitArguments(args, { cwd = process.cwd() } = {}) {
   };
 }
 
-async function inspectDestination(destination) {
+export async function inspectCatalogDestination(destination) {
   let stats;
   try {
     stats = await lstat(destination);
@@ -140,7 +140,7 @@ export function createCatalogInitPlan({ destination, host, apply = false, destin
 }
 
 export async function initializeCatalog(options) {
-  const destinationState = await inspectDestination(options.destination);
+  const destinationState = await inspectCatalogDestination(options.destination);
   if (destinationState === "nonempty") {
     invalid("destination-not-empty", `${options.destination} must be absent or empty; no files were changed`);
   }

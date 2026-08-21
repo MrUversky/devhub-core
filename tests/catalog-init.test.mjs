@@ -79,6 +79,25 @@ test("init-catalog --apply accepts an existing empty directory", async () => {
   }
 });
 
+test("init-catalog accepts Windows workstations as first-class hosts", async () => {
+  const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "devhub-init-windows-"));
+  const destination = path.join(temporaryRoot, "catalog");
+  try {
+    const result = await run([
+      "init-catalog", destination,
+      "--host-id", "windows-workstation",
+      "--host-name", "Windows workstation",
+      "--host-kind", "windows",
+      "--host-location", "local",
+      "--apply", "--json",
+    ]);
+    assert.equal(result.exitCode, 0);
+    assert.match(await readFile(path.join(destination, "hosts.yaml"), "utf8"), /kind: windows/);
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
 test("init-catalog never overwrites a non-empty destination", async () => {
   const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "devhub-init-preserve-"));
   const destination = path.join(temporaryRoot, "catalog");

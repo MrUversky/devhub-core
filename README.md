@@ -1,49 +1,148 @@
 # DevHub
 
+> **The home for what you shipped**
+
+> # Never lose track of what your agent shipped.
+
+Your coding agent can build and deploy it. DevHub keeps the operational context
+from disappearing—what exists, where it runs, what’s current, and what to do
+next across your laptops, servers, and clouds.
+
 > **Git remembers the code. DevHub remembers how it runs.**
 
-> **Your coding agent can build and deploy it. DevHub helps you understand it,
-> trust it, operate it, afford it and recover it.**
+Apps end up scattered across chats, laptops, servers, and clouds. DevHub keeps
+the context together—what exists, where it runs, what’s current, and what to do
+next.
+
+Monitoring, safety, cost and recovery appear as reviewed facts and evidence,
+not automatic guarantees. When DevHub cannot establish them, it says `unknown`.
 
 ![DevHub connects the operational context around every service](public/og.png)
 
-DevHub is the self-hosted operational home for everything you build: local
-dashboards, APIs, workers, bots, databases, model runtimes and private tools
-spread across laptops, servers and private networks.
+**Find it again · Know what’s true · Continue safely**
 
-It keeps every service findable, explains how trustworthy its current state
-is, and leads to the safest useful next action. The catalog does not depend on
-a particular framework, process manager or hosting platform.
+> **Self-hosted. Read-only by default. No secrets. Every catalog change
+> reviewable.**
 
-Your coding agent may have shipped the service, but DevHub preserves the
-operating context: where it was deployed, what it depends on, who owns it, what
-it may cost, which safeguards have evidence and whether recovery has actually
-been reviewed.
+DevHub gives builders a dependable home for agent-built software, preserving
+the context they need to understand what exists and take the next safe step.
+The catalog does not depend on a particular framework, process manager or
+hosting platform.
 
 It keeps reviewed YAML manifests in Git, builds a lightweight read-only
 dashboard and exposes the same catalog through a read-only MCP endpoint. It
-does not scan random ports, execute shell commands or act as a process
-supervisor.
+does not scan random ports, execute shell commands, store secrets or act as a
+process supervisor. Unknown never pretends to be green.
 
 > **Alpha:** the public snapshot is intended for evaluation and small
 > self-hosted installations. The manifest contract may still gain
 > backward-compatible fields before 1.0.
 
+## Start here
+
+- [Install DevHub](#install-devhub)
+- [Set up connections](docs/CONNECTED_SETUP.md)
+- [Create your catalog](#add-your-catalog)
+- [Connect Codex, Claude Code, or Cursor](docs/INTEGRATIONS_AGENTS.md)
+- [Understand the configuration](docs/CONFIGURATION.md)
+- [Review the security boundary](SECURITY.md)
+
 ## What it answers
 
-- Which projects and runnable services exist?
-- On which host does each service belong?
-- Is an endpoint live, reported, catalog-only or on another computer?
-- Which reviewed runbook explains how to start, inspect or recover it?
-- Which monitoring, recovery, security, ownership and cost claims have fresh
-  evidence, and which remain honestly unknown?
-- Which services across the portfolio need an evidence refresh or a recovery
-  decision first?
+- What projects and runnable services are registered?
+- Where does each service belong, and which entry point is reviewed?
+- Is its state live, reported, stale, catalog-only or unknown?
+- What reviewed guidance or evidence supports the next step?
 
 The core promise is continuity: return to a project after weeks or months and
-recover its operational context in under 30 seconds. DevHub is not a metrics
-stack or a universal process supervisor; when trustworthy evidence is missing,
-it reports `unknown` instead of inventing a green status.
+recover the context needed to continue. DevHub is not a metrics stack or a
+universal process supervisor; when trustworthy evidence is missing, it reports
+`unknown` instead of inventing a green status.
+
+## Install DevHub
+
+The primary current-alpha path is the pinned user-wide CLI from one authorized,
+checksum-verified candidate or release asset set. It installs without npm or
+`sudo`, works from any project and keeps the catalog and configuration outside
+the immutable runtime. Public releases are distributed through the existing
+`MrUversky/devhub-core` repository; no npm package is published. Pin both the
+plugin marketplace and release assets to one reviewed annotated public tag.
+
+```bash
+codex plugin marketplace add MrUversky/devhub-core --ref <TAG>
+codex plugin add devhub@devhub-community
+```
+
+Follow [Pinned user-wide CLI](docs/INSTALLATION.md#pinned-user-wide-cli), then
+verify `devhub doctor --workflow --json` and `devhub doctor --install --json`.
+The same installer performs explicit upgrades, rollback and config-preserving
+uninstall. The Codex plugin, Claude Code memory and Cursor rule are guidance;
+none of them installs the CLI.
+
+The dashboard/server remains available from a verified source snapshot:
+
+```bash
+npm ci
+npm run dev
+```
+
+Open <http://127.0.0.1:3000>, choose the sources to inspect, and continue with
+the bounded request in Codex, Claude Code or Cursor. Docker Compose remains an
+equivalent source-based path in [Quick start with Docker](#quick-start-with-docker).
+
+## Set up connections
+
+Start in the dashboard or ask Codex, Claude Code or Cursor to **Set up my
+DevHub**. The dashboard follows one honest handoff: **Choose sources → Run with
+your coding agent**. Including a source does not connect it; it adds that source
+to the bounded request you paste into a coding-agent task. The agent performs
+the actual scoped setup and returns a reviewable proposal.
+
+The connector library shows working sources first and keeps future providers
+in a separate roadmap without claiming that a detected local tool is connected.
+The hosted demo presents working connectors as a setup preview, not as personal
+connection state. It hides viewer/device identity and private profiles while
+keeping example host and runtime placement visible. A self-hosted **Private
+workspace** shows its own reviewed connection state separately from
+**Include in this run**/**Included** for the later agent run. The dashboard
+uses reviewed redacted evidence to distinguish sources ready for an agent check
+from sources that still need exact access or scope. The public demo shows
+support only and never claims that readiness. The dashboard does not contact
+providers. Setup reads only exact local markers, never
+credential values or configuration contents, and never writes
+catalog truth. See [Connected Setup](docs/CONNECTED_SETUP.md) for the complete
+boundary.
+
+The hosted page follows **install → setup → demo workspace**. **Get DevHub**
+opens the three-step installation path; **Explore demo** opens a six-project
+workspace across production, active, discovery and paused lifecycles. Project,
+service and runtime-host totals sit beside that catalog. Each Guardian signal
+has its own accessible explanation and filters directly to matching examples.
+
+```bash
+npm run devhub -- setup
+npm run devhub -- setup-run --sources github,local-host --json
+npm run devhub -- setup-session config/connection-profiles.example.json --json
+```
+
+Use `--json` when a coding agent will consume the plan. Copy the fictional
+profile template, keep only relevant sources, and replace its account, host or
+workspace identities. The next step is `discovery-inbox`, which groups unclear
+resources for review and never writes them into the catalog.
+
+To find previously unregistered local candidates, select one reviewed host and
+one or more absolute roots explicitly:
+
+```bash
+devhub discover-local developer-laptop \
+  --root /absolute/path/to/projects \
+  --json
+```
+
+The command is bounded, isolated, no-follow and read-only. It emits the same
+Discovery Inbox review contract without printing absolute workspace paths or
+inferring accountable owner, mode, visibility or live state. See
+[Bounded local discovery](docs/LOCAL_DISCOVERY.md).
 
 ## Refresh reviewed provider evidence
 
@@ -59,6 +158,24 @@ npm run devhub -- review-portfolio --json \
 
 The result is a candidate, not an automatic catalog update. Review a minimal
 YAML diff before dashboard or MCP can show the new evidence.
+
+## Review a bounded provider inventory
+
+DevHub can also enumerate one explicitly configured Railway workspace or
+workspace-parented project and reconcile the normalized candidates with the
+reviewed catalog:
+
+```bash
+npm run devhub -- inventory config/inventory-bindings/example-railway.json --json
+```
+
+The binding names an environment variable containing a read-only Railway token;
+the token never enters JSON output or the catalog. Exact provider identities
+may be mapped through reviewed decisions. Repository, domain and name matches
+remain possible matches. Unregistered projects may include a stdout-only
+overlay proposal, which must be reviewed, validated and merged separately.
+See [Provider inventory](docs/PROVIDER_INVENTORY.md) and the
+[Railway adapter](docs/RAILWAY_INVENTORY.md).
 
 ## Quick start with Docker
 
@@ -125,13 +242,21 @@ private or the source repository is shared or external.
 
 See [Installation](docs/INSTALLATION.md),
 [Configuration](docs/CONFIGURATION.md), [App Passport](docs/APP_PASSPORT.md),
+[Connected Setup](docs/CONNECTED_SETUP.md),
+[Coding-agent integrations](docs/INTEGRATIONS_AGENTS.md),
 [Portfolio review](docs/PORTFOLIO_REVIEW.md),
+[Reviewed stewardship](docs/STEWARDSHIP.md),
+[Connector conformance](docs/CONNECTOR_CONFORMANCE.md),
 [Read-only evidence adapters](docs/EVIDENCE_ADAPTERS.md),
 [GitHub evidence adapters](docs/GITHUB_EVIDENCE_ADAPTERS.md),
+[Vercel inventory and deployment evidence](docs/VERCEL_CONNECTOR.md),
+[Sentry monitoring and release evidence](docs/SENTRY_EVIDENCE_ADAPTER.md),
 and [Privacy](docs/PRIVACY.md).
 
-Codex users can install the portable workflow skill and connect it to their
-own MCP endpoint using [the Codex integration guide](docs/INTEGRATIONS_CODEX.md).
+Codex, Claude Code, and Cursor use the same read-only MCP and deterministic CLI
+contract. Generate a client-native setup plan with `devhub agent-setup`; Codex
+users can additionally install the portable workflow skill described in the
+[Codex integration guide](docs/INTEGRATIONS_CODEX.md).
 
 ## Read-only MCP
 

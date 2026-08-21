@@ -3,6 +3,40 @@
 DevHub is registry-as-code. YAML is the reviewed source of truth; generated
 JSON is consumed by the dashboard and MCP.
 
+## User-wide path precedence
+
+The installed CLI resolves its mutable paths in this exact order:
+
+1. command options: `--catalog-dir`, `--connection-profiles-file`,
+   `--generated-dir` and `--instance-config`;
+2. `DEVHUB_CATALOG_DIR`, `DEVHUB_CONNECTION_PROFILES_FILE`,
+   `DEVHUB_GENERATED_DIR` and `DEVHUB_INSTANCE_CONFIG`;
+3. the strict version 1 instance file;
+4. installed XDG defaults, or the backward-compatible checkout paths when the
+   CLI is running from source.
+
+Command and instance-file paths are absolute. The default instance file is
+`${XDG_CONFIG_HOME:-$HOME/.config}/devhub/instance.json` and may contain only
+non-secret path configuration:
+
+```json
+{
+  "version": 1,
+  "catalogDirectory": "/absolute/path/to/devhub/catalog",
+  "connectionProfilesFile": "/absolute/path/to/devhub/connection-profiles.json",
+  "generatedDirectory": "/absolute/path/to/devhub/generated"
+}
+```
+
+An installed runtime defaults the catalog and generated output to
+`${XDG_DATA_HOME:-$HOME/.local/share}/devhub` and profiles to
+`${XDG_CONFIG_HOME:-$HOME/.config}/devhub`. A source checkout retains
+`catalog/`, `config/connection-profiles.json`, `app/generated/catalog.json`
+and `public/catalog.json` unless an earlier layer overrides them. The CLI never
+writes generated JSON into an immutable installed runtime. Profile files hold
+only reviewed non-secret scope and external credential references; credential
+values remain in environment, macOS Keychain or 1Password resolvers.
+
 ## Catalog layout
 
 ```text
@@ -18,6 +52,47 @@ manifest references those IDs from workspaces and services.
 Use stable lowercase kebab-case IDs. Renaming IDs breaks bookmarks and status
 history. Register two services separately when they have different URLs,
 processes, health checks, hosts, owners or lifecycles.
+
+## Connected Setup
+
+The dashboard uses one read-only handoff: **Choose sources → Run with your
+coding agent**. Including a source does not contact or authorize it. Paste the
+generated request into Codex, Claude Code or Cursor. From the CLI:
+
+```bash
+npm run devhub -- setup
+```
+
+Add `--json` for an agent-readable result. After the request is pasted, the
+agent runs the internal connect, map, review and proposal stages. Setup checks
+only exact local executable and filesystem markers. It does not execute
+provider CLIs, read configuration contents or credential values, contact
+providers, or change the catalog. A detected marker is a hint, not a connected account. See
+[Connected Setup](CONNECTED_SETUP.md) for the connector and review boundary.
+
+For one exact selected-only preflight and combined review, use:
+
+```bash
+npm run devhub -- setup-run --sources github,local-host --json
+```
+
+The private dashboard derives **N ready · M need access or scope** from the
+same redacted preflight contract. The public demo remains support-only. Neither
+surface performs browser provider access or invents a completed run.
+
+For one first-map preview over the existing initializer, setup-run, bounded
+local discovery and Discovery Inbox, use the installed runtime from any
+directory:
+
+```bash
+devhub onboard --sources github,local-host \
+  --root /absolute/operator-selected/projects \
+  --host-id reviewed-workstation
+```
+
+The command returns one versioned no-write plan, follows the same external path
+precedence and has no apply mode. Every source and root must be selected
+explicitly.
 
 ## Initialize a catalog safely
 
@@ -39,7 +114,7 @@ never overwrites files, supplies no machine-derived defaults and immediately
 runs the same strict host/project validation used by the catalog compiler.
 
 Use `--json` for an agent-readable plan. Host IDs must be stable lowercase
-kebab-case; host kind is `mac`, `linux` or `cloud`, and location is `local`,
+kebab-case; host kind is `mac`, `windows`, `linux` or `cloud`, and location is `local`,
 `remote` or `cloud`. A host name is descriptive metadata, not a credential.
 
 Select the new catalog explicitly when building or running DevHub:
@@ -69,6 +144,47 @@ Overlay is a privacy boundary, not a lesser registration mode.
 Commands in a service manifest are copy-only runbook documentation. DevHub
 does not execute them.
 
+## Self-service host monitoring
+
+For a private workstation or server, keep central status tied to one reviewed
+HTTPS probe and optionally declare how its minimal loopback endpoint is
+published:
+
+```yaml
+probe:
+  type: http
+  url: https://workstation.example.test/health/example
+  successStatuses: [200]
+  timeoutMs: 5000
+  publish:
+    type: tailscale-serve
+    visibility: tailnet
+    targetUrl: http://127.0.0.1:3000/api/health
+    path: /health/example
+```
+
+On that exact host, preview and then explicitly apply the reviewed routes:
+
+```bash
+npm run devhub -- setup-host-monitoring developer-workstation
+npm run devhub -- setup-host-monitoring developer-workstation --apply
+```
+
+The command verifies device identity and existing handlers. Apply is locked,
+idempotent and path-scoped: it never enables Funnel, resets Serve, stores a
+credential, installs a resident agent or removes unrelated routes. The
+Tailscale Serve adapter works on macOS, Windows and Linux where the CLI offers
+Serve. Managed cloud services normally use their direct reviewed HTTPS probe
+and need no local publisher; future publisher types remain separate adapters.
+Publisher `visibility` is explicitly `tailnet`; the service's primary
+`visibility` remains independent. Run this from a compatible DevHub runtime
+that contains the current reviewed catalog. The plugin and MCP do not install
+the CLI. Tailscale, MagicDNS/HTTPS and an ACL path from the central DevHub host
+must already exist. Local apply keeps `centralVerification` pending until the
+published URL is checked from that central host.
+Use a current Tailscale CLI with `--set-path`; Windows setup may require an
+Administrator terminal, while Linux service users need daemon access.
+
 ## Service links
 
 `url` remains the optional canonical service URL understood by existing
@@ -97,8 +213,6 @@ Every link requires a stable lowercase kebab-case `id`, a human-readable
 absolute HTTP(S) browser links without embedded credentials or secret-bearing
 query parameters. Keep `url` while older clients still rely on it; a `primary`
 link may mirror it for typed-link consumers.
-
-## Status and probes
 
 ## App Passport evidence
 
@@ -156,8 +270,10 @@ connection strings or credentials.
 ## Status and probes
 
 An HTTP probe is optional and must use a fixed reviewed URL. Probes use GET,
-short timeouts, no credentials and no cookies. Accept 401 or 403 only when that
-response proves the protected endpoint is alive.
+short timeouts, no credentials and no cookies. Accepting 401 or 403 proves only
+that a protected edge is reachable (`PROTECTED`); it does not prove LIVE
+application health. Use a minimal unauthenticated health endpoint when LIVE is
+required.
 
 `localhost` is local to the DevHub server. A central server cannot probe a
 service bound to loopback on another computer. Either leave it honestly
@@ -169,6 +285,8 @@ private network.
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `DEVHUB_HOST_ID` | implementation fallback | Host from which probes run and local URLs are interpreted |
+| `DEVHUB_STATUS_CORS_ORIGINS` | unset | Comma-separated exact origin-only HTTPS URLs allowed to read `/api/status`; wildcard is rejected |
+| `DEVHUB_STATUS_API_BASE_URL` | unset | Exact origin-only HTTPS URL whose `/api/status` snapshot the browser reads; unset keeps same-origin behavior |
 | `DEVHUB_MCP_AUTH_MODE` | `network` | `network` trusts the surrounding access boundary; `bearer` requires `DEVHUB_MCP_TOKEN`; unknown modes fail closed |
 | `DEVHUB_MCP_TOKEN` | unset | Random token of at least 32 bytes for bearer-mode MCP; never commit it |
 | `NODE_ENV` | tool-dependent | Use `production` for deployed instances |
@@ -179,6 +297,14 @@ private network.
 Set the bind address and port through the process runner. Docker Compose also
 accepts `DEVHUB_BIND_ADDRESS` and `DEVHUB_PORT` for host-side publishing; both
 default to loopback port 3000.
+
+The two status-bridge values are server-only configuration. They reject
+credentials, paths, query strings, fragments and wildcard origins. The
+dashboard never accepts a status base from browser input, and `/api/context`
+always stays same-origin. A browser-mediated bridge still requires the viewer
+device to reach the central private network; CORS does not publish that network
+or replace its ACLs. With both variables unset, including in the public demo
+snapshot, DevHub reads only its own same-origin `/api/status` route.
 
 ## Apply changes
 

@@ -1,11 +1,13 @@
 import { readFile, stat } from "node:fs/promises";
 
+import { validateConnectorEvidenceExecution } from "../lib/connector-conformance.mjs";
+import { CONNECTOR_CONTRACTS } from "../lib/connector-contracts.mjs";
 import {
   createMemoryEvidenceCache,
   runEvidenceAdapter,
-  validateEvidenceBinding,
 } from "../lib/evidence-adapters.mjs";
 import { evidenceAdapterRegistry } from "../lib/evidence-adapters/registry.mjs";
+import { createCredentialResolver } from "./setup-session.mjs";
 
 const MAX_BINDING_FILE_BYTES = 256 * 1024;
 const BINDING_FIELDS = new Set([
@@ -15,8 +17,13 @@ const BINDING_FIELDS = new Set([
   "provider",
   "reviewedIdentity",
   "credentialEnv",
+  "credentialRef",
   "checks",
   "freshForSeconds",
+  "deadlineMs",
+  "maxPages",
+  "maxResponseBytes",
+  "maxCandidates",
 ]);
 
 export class EvidenceCollectionError extends Error {
@@ -100,7 +107,7 @@ function reviewedRepositories(project, service) {
   return new Set(values.map(normalizeGitHubRepository).filter(Boolean));
 }
 
-function prepareBindings(sourceCatalog, bindings, registry) {
+function prepareBindings(sourceCatalog, bindings, registry, contracts) {
   const projects = new Map(sourceCatalog.projects.map(({ manifest }) => [manifest.id, manifest]));
   return bindings.map((binding, index) => {
     const adapter = registry.get(binding.adapterId);
@@ -109,7 +116,7 @@ function prepareBindings(sourceCatalog, bindings, registry) {
     }
     let reviewedBinding;
     try {
-      reviewedBinding = validateEvidenceBinding(binding, adapter);
+      ({ binding: reviewedBinding } = validateConnectorEvidenceExecution({ contracts, binding, adapter }));
     } catch (error) {
       fail(error?.code ?? "invalid-evidence-binding", `bindings[${index}]: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -131,10 +138,15 @@ function prepareBindings(sourceCatalog, bindings, registry) {
 
 export async function collectEvidenceBindings(sourceCatalog, bindingInput, options = {}) {
   const registry = options.registry ?? evidenceAdapterRegistry;
+  const contracts = options.contracts ?? CONNECTOR_CONTRACTS;
   const bindings = Array.isArray(bindingInput) ? bindingInput : parseEvidenceBindingDocument(bindingInput);
-  const prepared = prepareBindings(sourceCatalog, bindings, registry);
+  const prepared = prepareBindings(sourceCatalog, bindings, registry, contracts);
   const cache = options.cache ?? createMemoryEvidenceCache();
   const environment = options.environment ?? process.env;
+  const resolveCredential = options.resolveCredential ?? createCredentialResolver({
+    environment,
+    run: options.runCredentialCommand,
+  });
   const collectedAt = new Date(options.now ?? Date.now());
   if (!Number.isFinite(collectedAt.getTime())) fail("invalid-now", "evidence collection requires a valid now value");
   const results = [];
@@ -143,6 +155,7 @@ export async function collectEvidenceBindings(sourceCatalog, bindingInput, optio
       binding,
       adapter,
       environment,
+      resolveCredential,
       now: collectedAt,
       cache,
     }));

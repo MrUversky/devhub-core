@@ -44,6 +44,36 @@ jobs:
       - run: npm run devhub -- doctor --json
       - run: npm audit --omit=dev --audit-level=high
 
+  windows-cli-paths:
+    name: CLI and paths only (Windows, Node 22; no service installer claim)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Materialize the manifest-bound source bytes
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP "devhub-manifest-source.tar"
+          $source = Join-Path $env:RUNNER_TEMP "devhub-manifest-source"
+          New-Item -ItemType Directory -Path $source | Out-Null
+          git -c core.autocrlf=false -c core.eol=lf archive --format=tar --output=$archive HEAD
+          if ($LASTEXITCODE -ne 0) { throw "Unable to archive the exact public source tree" }
+          tar -xf $archive -C $source
+          if ($LASTEXITCODE -ne 0) { throw "Unable to extract the exact public source tree" }
+      - name: Verify the canonical source bytes
+        working-directory: ${{ runner.temp }}/devhub-manifest-source
+        run: npm run artifact:verify
+      - name: Install the exact locked dependencies
+        working-directory: ${{ runner.temp }}/devhub-manifest-source
+        run: npm ci
+      - name: Run Windows CLI and external-path checks
+        working-directory: ${{ runner.temp }}/devhub-manifest-source
+        run: node --test tests/windows-cli-paths.test.mjs
+
   release-evidence:
     name: Deterministic checksums and SBOM
     runs-on: ubuntu-latest

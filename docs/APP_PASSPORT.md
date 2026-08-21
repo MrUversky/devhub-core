@@ -3,14 +3,11 @@
 ## Purpose
 
 An App Passport is the evidence-backed operating record for one runnable
-service. It extends DevHub's answer from "where is it?" to "can I understand,
-trust, operate and recover it?" without turning DevHub into a deployment,
-monitoring or security platform.
-
-The product promise is:
-
-> Your coding agent can build and deploy it. DevHub helps you understand it,
-> trust it, operate it, afford it and recover it.
+service. It helps a builder avoid losing the context behind what an agent
+shipped. Git remembers its code; the passport helps DevHub remember the
+reviewed context for how it runs. It shows whether monitoring, safety, cost and
+recovery claims have evidence—and keeps them `unknown` when they do not. It
+does not turn DevHub into a deployment, monitoring or security platform.
 
 The existing catalog remains the source of reviewed intent. An App Passport is
 made from that intent, current runtime status and optional reviewed readiness
@@ -36,6 +33,19 @@ The profile sets context, not a universal compliance claim:
 
 DevHub does not infer a higher profile from a public URL. The owner or a
 reviewed agent proposal selects it explicitly.
+
+Projects with several services may declare `readinessDefaults` for `profile`,
+`owner`, `dataClassification` and `costModel`. A service inherits only a field
+it does not set itself, and the resolved passport exposes whether each value is
+explicit on the service or inherited from the project. A service override
+always wins. Defaults do not contain or inherit evidence, deployment facts or
+dependencies.
+
+Operational stewardship is modeled separately from the legacy free-text
+`owner` context. Reviewed accountable, operator, billing and credential roles
+use stable steward IDs, project defaults and explicit service overrides. See
+[Stewardship](STEWARDSHIP.md). Existing owner fields remain backward
+compatible and are never silently promoted into reviewed role evidence.
 
 ## Readiness evidence
 
@@ -64,6 +74,14 @@ A `verified` item whose `validUntil` is in the past is displayed as stale. A
 declaration is useful context but is never presented as verification. Unknown
 is an honest first-class result.
 
+An operator attestation uses the same evidence ledger, normally with
+`source: operator`, `observedAt` and `validUntil`. A project-level owner default
+does not become verified ownership evidence: each service that needs a current
+ownership attestation records reviewed service evidence. This avoids a second
+truth mechanism and keeps expiry visible. The inherited owner resolves the
+accountability field, while the profile's `ownership` readiness check remains
+`unknown` until service-specific evidence is recorded.
+
 ## Operating facts
 
 The passport may also carry a small non-secret operating inventory:
@@ -79,6 +97,10 @@ The passport may also carry a small non-secret operating inventory:
 These are reviewed facts, not credentials or provider configuration. A
 dependency URL points to safe documentation, status or console context and
 must never contain tokens or connection strings.
+
+Credential inventory stores only typed external references and stewardship
+metadata. Generated dashboard catalogs and MCP responses redact the reference
+locator and show only its kind and configured state.
 
 ## Profile expectations
 
@@ -131,6 +153,12 @@ All provider modules must pass through the shared
 requires an exact reviewed project/service identity, resolves credentials only
 from external environment configuration, normalizes uncached provider failures
 to `unknown` and keeps stale last-known evidence visibly stale.
+
+Exact-resource evidence is distinct from bounded provider inventory. Inventory
+may discover an unregistered remote deployment or dependency; it produces a
+review candidate rather than verified passport evidence. Only after the
+candidate is matched, reviewed and merged may an exact binding refresh its
+passport evidence. See [Provider inventory](PROVIDER_INVENTORY.md).
 
 ## Explicit non-goals
 

@@ -1,0 +1,22 @@
+version: 1
+id: prototype-lab
+title: Prototype Lab
+registration: overlay
+aliases: [Demo discovery workspace]
+description: Early-stage prototype whose runtime and operating owner still need review.
+lifecycle: discovery
+kind: experiment
+repository: example/prototype-lab
+tags: [demo, prototype]
+services:
+  - id: concept-app
+    name: Concept app
+    kind: website
+    environment: preview
+    host: managed-cloud
+    runtime: managed
+    mode: managed
+    visibility: internal
+    reported:
+      state: registered
+      note: Catalog registration exists, but no current runtime observation has been reviewed.

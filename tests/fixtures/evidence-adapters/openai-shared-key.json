@@ -1,0 +1,5 @@
+{
+  "keyId": "key_fictional_shared",
+  "consumers": ["fictional-web", "fictional-worker"],
+  "reviewedPurpose": "Shared runtime for web and worker"
+}

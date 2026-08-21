@@ -1,5 +1,9 @@
 {
   "version": 1,
+  "instance": {
+    "mode": "demo",
+    "label": "Public demo"
+  },
   "hosts": [
     {
       "id": "developer-laptop",
@@ -23,13 +27,117 @@
   "projects": [
     {
       "version": 1,
+      "id": "client-portal",
+      "title": "Client Portal",
+      "registration": "overlay",
+      "aliases": [
+        "Demo private portal"
+      ],
+      "description": "Authenticated workspace with a current runtime status but no App Passport yet.",
+      "lifecycle": "active",
+      "kind": "product",
+      "repository": "example/client-portal",
+      "tags": [
+        "demo",
+        "portal"
+      ],
+      "services": [
+        {
+          "id": "portal",
+          "name": "Private portal",
+          "kind": "website",
+          "environment": "staging",
+          "host": "managed-cloud",
+          "runtime": "managed",
+          "mode": "managed",
+          "visibility": "authenticated",
+          "url": "https://portal.example.test",
+          "reported": {
+            "state": "up",
+            "observedAt": "2026-08-13T09:00:00Z",
+            "note": "The authenticated portal was reported available."
+          }
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "id": "content-pipeline",
+      "title": "Content Pipeline",
+      "registration": "native",
+      "aliases": [
+        "Demo publishing tools"
+      ],
+      "description": "Local publishing workflow that is paused until its next campaign.",
+      "lifecycle": "paused",
+      "kind": "automation",
+      "repository": "example/content-pipeline",
+      "tags": [
+        "demo",
+        "automation"
+      ],
+      "workspaces": [
+        {
+          "host": "developer-laptop",
+          "path": "/workspace/content-pipeline"
+        }
+      ],
+      "services": [
+        {
+          "id": "campaign-builder",
+          "name": "Campaign builder",
+          "kind": "local-tool",
+          "environment": "local",
+          "host": "developer-laptop",
+          "runtime": "node",
+          "mode": "on-demand",
+          "visibility": "local",
+          "url": "http://127.0.0.1:4400",
+          "reported": {
+            "state": "stopped",
+            "observedAt": "2026-08-13T08:00:00Z",
+            "note": "Stopped is expected while this on-demand tool is paused."
+          },
+          "commands": {
+            "start": "npm run dev",
+            "logs": "npm run logs"
+          },
+          "readiness": {
+            "profile": "personal",
+            "owner": "Example content operator",
+            "dataClassification": "internal",
+            "costModel": "free",
+            "dependencies": [],
+            "evidence": [
+              {
+                "id": "content-ownership",
+                "check": "ownership",
+                "state": "declared",
+                "source": "operator",
+                "note": "The operating owner is declared, but the evidence has not been independently checked.",
+                "observedAt": "2026-08-13T08:00:00Z"
+              },
+              {
+                "id": "content-backup",
+                "check": "backup",
+                "state": "unknown",
+                "source": "catalog",
+                "note": "No reviewed backup evidence is registered for the campaign files."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "version": 1,
       "id": "devhub",
       "title": "DevHub",
       "registration": "native",
       "aliases": [
         "Service registry"
       ],
-      "description": "Self-hosted operational map running with a fictional demo catalog.",
+      "description": "Self-hosted operational map for services and projects.",
       "lifecycle": "active",
       "kind": "platform",
       "repository": "example/devhub",
@@ -99,7 +207,7 @@
                 "check": "restore",
                 "state": "unknown",
                 "source": "catalog",
-                "note": "No isolated restore exercise has been recorded for this fictional installation."
+                "note": "No isolated restore exercise has been recorded for this installation."
               }
             ]
           },
@@ -117,7 +225,7 @@
       "aliases": [
         "Demo application"
       ],
-      "description": "Fictional application showing local and managed services.",
+      "description": "Application with local and managed services.",
       "lifecycle": "active",
       "kind": "product",
       "repository": "example/example-app",
@@ -129,6 +237,66 @@
         {
           "host": "developer-laptop",
           "path": "/workspace/example-app"
+        }
+      ],
+      "readinessDefaults": {
+        "profile": "personal",
+        "owner": "Example product owner",
+        "dataClassification": "internal",
+        "costModel": "free"
+      },
+      "stewards": [
+        {
+          "id": "example-product-team",
+          "name": "Example product team",
+          "kind": "team",
+          "source": "operator",
+          "observedAt": "2026-08-13T00:00:00Z",
+          "validUntil": "2027-08-13T00:00:00Z"
+        },
+        {
+          "id": "example-founder",
+          "name": "Example founder",
+          "kind": "person",
+          "source": "operator",
+          "observedAt": "2026-08-13T00:00:00Z",
+          "validUntil": "2027-08-13T00:00:00Z"
+        }
+      ],
+      "stewardshipDefaults": {
+        "accountableOwner": "example-founder",
+        "operator": "example-product-team",
+        "billingOwner": "example-founder",
+        "credentialOwner": "example-product-team"
+      },
+      "access": [
+        {
+          "id": "repository-access",
+          "kind": "repository",
+          "subject": "example/example-app",
+          "access": "yes",
+          "source": "operator",
+          "note": "The product team reviewed repository access separately from ownership.",
+          "observedAt": "2026-08-13T00:00:00Z"
+        }
+      ],
+      "credentials": [
+        {
+          "id": "example-mail-api",
+          "provider": "Example Mail",
+          "purpose": "Send transactional email",
+          "secretRef": {
+            "kind": "environment",
+            "configured": true
+          },
+          "consumers": [
+            "production-api"
+          ],
+          "owner": "example-product-team",
+          "payer": "example-founder",
+          "source": "operator",
+          "lastVerifiedAt": "2026-08-13T00:00:00Z",
+          "rotationDueAt": "2027-02-13T00:00:00Z"
         }
       ],
       "services": [
@@ -166,7 +334,7 @@
           },
           "reported": {
             "state": "stopped",
-            "note": "Start this fictional service only when the demo needs it."
+            "note": "Start this service only when the local console is needed."
           },
           "commands": {
             "start": "npm run dev",
@@ -212,7 +380,6 @@
           },
           "readiness": {
             "profile": "customer-facing",
-            "owner": "Example product owner",
             "dataClassification": "personal",
             "costModel": "metered",
             "deployment": {
@@ -230,7 +397,7 @@
                 "criticality": "required",
                 "provider": "Example Database",
                 "url": "https://console.example.test/example-app/database",
-                "note": "Stores fictional customer records for this demo."
+                "note": "Stores customer records for the production API."
               },
               {
                 "id": "email-api",
@@ -243,11 +410,20 @@
             ],
             "evidence": [
               {
+                "id": "ownership-attestation",
+                "check": "ownership",
+                "state": "declared",
+                "source": "operator",
+                "note": "The product owner reviewed the production ownership boundary.",
+                "observedAt": "2026-08-13T00:00:00Z",
+                "validUntil": "2026-11-13T00:00:00Z"
+              },
+              {
                 "id": "monitoring-review",
                 "check": "monitoring",
                 "state": "declared",
                 "source": "operator",
-                "note": "The fictional managed provider is declared as the monitoring owner; no live integration is connected.",
+                "note": "The managed provider is declared as the monitoring owner; no live integration is connected.",
                 "observedAt": "2026-08-13T00:00:00Z"
               },
               {
@@ -255,20 +431,150 @@
                 "check": "restore",
                 "state": "unknown",
                 "source": "catalog",
-                "note": "No reviewed restore exercise is registered for this fictional API."
+                "note": "No reviewed restore exercise is registered for this API."
               },
               {
                 "id": "cost-boundary",
                 "check": "cost",
                 "state": "declared",
                 "source": "operator",
-                "note": "Billing belongs to the fictional managed provider account.",
+                "note": "Billing belongs to the managed provider account.",
                 "url": "https://billing.example.test/example-app"
               }
             ]
+          },
+          "stewardship": {
+            "operator": "example-product-team"
+          }
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "id": "prototype-lab",
+      "title": "Prototype Lab",
+      "registration": "overlay",
+      "aliases": [
+        "Demo discovery workspace"
+      ],
+      "description": "Early-stage prototype whose runtime and operating owner still need review.",
+      "lifecycle": "discovery",
+      "kind": "experiment",
+      "repository": "example/prototype-lab",
+      "tags": [
+        "demo",
+        "prototype"
+      ],
+      "services": [
+        {
+          "id": "concept-app",
+          "name": "Concept app",
+          "kind": "website",
+          "environment": "preview",
+          "host": "managed-cloud",
+          "runtime": "managed",
+          "mode": "managed",
+          "visibility": "internal",
+          "reported": {
+            "state": "registered",
+            "note": "Catalog registration exists, but no current runtime observation has been reviewed."
+          }
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "id": "studio-store",
+      "title": "Studio Store",
+      "registration": "overlay",
+      "aliases": [
+        "Demo storefront"
+      ],
+      "description": "Customer-facing storefront with a healthy web surface and a degraded checkout worker.",
+      "lifecycle": "production",
+      "kind": "product",
+      "repository": "example/studio-store",
+      "tags": [
+        "demo",
+        "commerce"
+      ],
+      "services": [
+        {
+          "id": "storefront",
+          "name": "Storefront",
+          "kind": "website",
+          "environment": "production",
+          "host": "managed-cloud",
+          "runtime": "managed",
+          "mode": "managed",
+          "visibility": "public",
+          "url": "https://store.example.test",
+          "reported": {
+            "state": "up",
+            "observedAt": "2026-08-13T12:00:00Z",
+            "note": "The managed storefront deployment was reported healthy."
+          },
+          "readiness": {
+            "profile": "customer-facing",
+            "owner": "Example commerce team",
+            "dataClassification": "personal",
+            "costModel": "metered",
+            "deployment": {
+              "source": "integration",
+              "provider": "Example Cloud",
+              "revision": "storefront-demo-18",
+              "deployedAt": "2026-08-13T11:30:00Z"
+            },
+            "dependencies": [
+              {
+                "id": "checkout-api",
+                "kind": "payment",
+                "name": "Checkout API",
+                "criticality": "required",
+                "provider": "Example Payments"
+              }
+            ],
+            "evidence": [
+              {
+                "id": "storefront-monitoring",
+                "check": "monitoring",
+                "state": "verified",
+                "source": "integration",
+                "note": "Synthetic monitoring checked the storefront.",
+                "observedAt": "2026-08-13T12:00:00Z",
+                "validUntil": "2026-09-13T12:00:00Z"
+              },
+              {
+                "id": "storefront-alerting",
+                "check": "alerting",
+                "state": "unknown",
+                "source": "catalog",
+                "note": "No reviewed alert-delivery evidence is attached to this service."
+              }
+            ]
+          }
+        },
+        {
+          "id": "checkout-worker",
+          "name": "Checkout worker",
+          "kind": "worker",
+          "environment": "production",
+          "host": "managed-cloud",
+          "runtime": "managed",
+          "mode": "managed",
+          "visibility": "internal",
+          "reported": {
+            "state": "degraded",
+            "observedAt": "2026-08-13T12:00:00Z",
+            "note": "The retry backlog is elevated; checkout processing is degraded."
           }
         }
       ]
     }
-  ]
+  ],
+  "connections": {
+    "version": 1,
+    "source": "not-configured",
+    "profiles": []
+  }
 }

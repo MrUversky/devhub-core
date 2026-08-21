@@ -1,5 +1,10 @@
 # Read-only evidence adapter contract
 
+Every executable provider evidence adapter also declares its versioned
+capability and hard limits in the canonical [connector conformance
+registry](CONNECTOR_CONFORMANCE.md). This document defines the exact-identity
+evidence runner beneath that registry.
+
 Evidence adapters collect a narrow App Passport candidate from an external
 provider without turning DevHub into a provider inventory, log store or control
 plane. The normalized result is transient review input. It does not become
@@ -25,7 +30,11 @@ The binding is integration configuration, not a project manifest:
   },
   credentialEnv: "EXAMPLE_CLOUD_TOKEN",
   checks: ["deployment"],
-  freshForSeconds: 3600
+  freshForSeconds: 3600,
+  deadlineMs: 10000,
+  maxPages: 4,
+  maxResponseBytes: 1048576,
+  maxCandidates: 1
 }
 ```
 
@@ -60,9 +69,19 @@ The runner freezes this allowlisted request:
   reviewedIdentity,
   checks,
   credential,
-  now
+  now,
+  signal,
+  limits: { deadlineMs, maxPages, maxResponseBytes, maxCandidates }
 }
 ```
+
+The generic runner races every collection against `deadlineMs`, aborts the
+runner signal on expiry and returns the stable `adapter-timeout` reason. A
+provider adapter must forward that signal to its transport, use no more than
+`maxPages`, apply `maxResponseBytes` while reading each response and return no
+more than `maxCandidates` normalized evidence items. Provider code may impose
+smaller limits. The runner still enforces its own output candidate bound and
+secret-safe normalized schema even if an adapter is faulty.
 
 A successful provider observation has `status: "success"`, the exact
 `observedIdentity`, `observedAt` and one item per observed check. Provider
@@ -116,7 +135,7 @@ same versioned result:
     validUntil,
     url
   }],
-  deployment: { identity, revision, url, host },
+  deployment: { identity, revision, url, host, deployedAt },
   recurringCost: { state, observedAt, url }
 }
 ```
@@ -158,8 +177,11 @@ preserve its provenance and freshness, and run the normal Git review workflow.
 Until that change is merged and the catalog is regenerated, dashboard and MCP
 must keep showing the previous reviewed evidence.
 
-Before adapter access, DevHub validates every binding, resolves an allowlisted
-adapter, and matches the exact catalog project and service. A reviewed service
+Before adapter access, DevHub validates every binding against both the generic
+runner and the one canonical connector contract that claims the adapter.
+Requests above that connector's deadline, page, response or candidate limit
+fail before provider I/O. DevHub then matches the exact catalog project and
+service. A reviewed service
 link with `type: repository` is authoritative for GitHub; `project.repository`
 is used only when that service link is absent. All bindings in the invocation
 pass this preflight before the first network request.
@@ -187,6 +209,13 @@ The first concrete provider pilots use exact GitHub release, Actions deployment
 and workflow identities. See
 [GitHub evidence adapters](GITHUB_EVIDENCE_ADAPTERS.md) for their binding,
 authentication and retained-data boundaries.
+
+The experimental [Vercel connector](VERCEL_CONNECTOR.md) adds exact reviewed
+Production/Preview deployment evidence through the same normalized contract.
+
+The experimental [OpenAI Admin connector](OPENAI_ADMIN_CONNECTOR.md) adds exact
+organization/project, Completions Usage API, Costs API and redacted project-key
+metadata with separate project and billing access semantics.
 
 ## Explicit non-goals
 

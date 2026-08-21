@@ -1,0 +1,51 @@
+{
+  "data": {
+    "project": {
+      "id": "22222222-2222-4222-8222-222222222222",
+      "name": "Fictional Acme App",
+      "services": {
+        "edges": [
+          {
+            "node": {
+              "id": "33333333-3333-4333-8333-333333333333",
+              "name": "Web",
+              "variables": {
+                "DATABASE_URL": "postgres://secret.invalid/db"
+              }
+            }
+          },
+          {
+            "node": {
+              "id": "44444444-4444-4444-8444-444444444444",
+              "name": "Worker",
+              "apiKey": "railway-secret-shaped-service-value"
+            }
+          }
+        ],
+        "pageInfo": {
+          "hasNextPage": false
+        }
+      },
+      "environments": {
+        "edges": [
+          {
+            "node": {
+              "id": "55555555-5555-4555-8555-555555555555",
+              "name": "production",
+              "password": "railway-secret-shaped-environment-value"
+            }
+          },
+          {
+            "node": {
+              "id": "66666666-6666-4666-8666-666666666666",
+              "name": "staging"
+            }
+          }
+        ],
+        "pageInfo": {
+          "hasNextPage": false
+        }
+      }
+    }
+  }
+}
