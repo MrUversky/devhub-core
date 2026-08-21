@@ -130,7 +130,7 @@ test("active generic plugin release requires the verified workflow and instance 
 
   assert.equal(plugin.name, "devhub");
   assert.equal(plugin.version, "0.7.0-alpha.5");
-  assert.equal(packageDocument.version, "1.0.0-rc.5");
+  assert.equal(packageDocument.version, "1.0.0-rc.6");
   assert.match(skill, /devhub doctor --workflow --json/);
   assert.match(skill, /contract version 2[\s\S]*setupRun: 1[\s\S]*connectionReview: 1[\s\S]*guidedConfirmation: 1[\s\S]*taskObservation: 1/);
   assert.match(skill, /(?:Never|Do not manually) fall back[\s\S]*setup-session[\s\S]*discovery-inbox/i);

@@ -42,6 +42,7 @@ lib/setup-run-presentation.mjs
 lib/setup-run.mjs
 lib/setup-session.mjs
 lib/setup-state.mjs
+lib/sites-companion.mjs
 lib/status-bridge.mjs
 lib/status-polling.mjs
 lib/stewardship.mjs
@@ -84,4 +85,5 @@ scripts/semantic-diff.mjs
 scripts/setup-run.mjs
 scripts/setup-session.mjs
 scripts/setup-state.mjs
+scripts/sites-companion.mjs
 templates/project.yaml

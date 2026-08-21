@@ -213,7 +213,7 @@ test("central status bridge UI is explicit about device reachability and bounded
 
   const source = await readFile(new URL("../app/DevHubDashboard.tsx", import.meta.url), "utf8");
   assert.match(source, /fetch\(statusApiEndpoint, \{ cache: "no-store", credentials: "omit", mode: "cors" \}\)/);
-  assert.match(source, /fetch\("\/api\/context", \{ cache: "no-store" \}\)/);
+  assert.match(source, /fetch\(viewerContextEndpoint, \{ cache: "no-store" \}\)/);
   assert.doesNotMatch(source, /fetch\([^\n]*(?:query|localStorage|searchParams)/i);
 });
 

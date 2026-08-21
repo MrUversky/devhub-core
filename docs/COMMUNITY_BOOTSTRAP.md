@@ -78,7 +78,7 @@ Codex verifies the annotated tag and peeled public commit, the GitHub Release's
 exact tag, every line of `SHA256SUMS`, release-evidence format/version, clean
 source state, runtime/installer/source/SBOM digests and the applicable platform
 report. It keeps raw JSON internal and reports a short result such as
-**Release v1.0.0-rc.5 verified from MrUversky/devhub-core**. A missing or
+**Release v1.0.0-rc.6 verified from MrUversky/devhub-core**. A missing or
 contradictory artifact stops the workflow.
 
 After showing the exact version and user-owned installation paths, Codex asks
@@ -264,3 +264,13 @@ Recovery is scoped and preserves the catalog by default:
 Temporary assets and transient review documents may be removed after evidence
 is recorded. Deleting the catalog repository, provider configuration, project
 files or secrets is never part of uninstall.
+
+## Optional next step: owner-only Sites companion
+
+After every canonical verification above passes, the user may separately ask
+Codex to add the [owner-only Sites companion](SITES_COMPANION.md). It is a
+sanitized private view built from the same exact public source and reviewed
+catalog revision. It reuses the self-hosted `/api/status` route only through the
+viewer browser, omits credentials and never ships `/api/context`, `/api/status`
+or MCP as a Sites backend. It remains optional, preview-first and independent
+from first-run success.

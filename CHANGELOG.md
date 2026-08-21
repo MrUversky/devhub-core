@@ -4,7 +4,18 @@ Notable changes to the public DevHub snapshot are recorded here.
 
 ## Unreleased
 
-## 1.0.0-rc.5 — Pending release
+## 1.0.0-rc.6 — Pending release
+
+### Added
+
+- An optional owner-only Sites companion stages one exact verified public
+  source plus one exact clean catalog revision without copying profiles,
+  credentials, private context, URLs, commands, probes or hosting metadata.
+- The companion remains preview-first and status-only: browser reads use one
+  fixed reviewed origin, inconsistent or stale evidence never renders LIVE,
+  and create/reuse, publish, rollback and binding remain explicit boundaries.
+
+## 1.0.0-rc.5 — 2026-08-21
 
 ### Added
 

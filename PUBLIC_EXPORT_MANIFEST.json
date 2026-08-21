@@ -2,7 +2,7 @@
   "manifestVersion": 2,
   "exporterVersion": 1,
   "source": {
-    "commit": "7b3552406df64dc19f660a1ccde20b72b7489561",
+    "commit": "82b7b1dcc0d1ee0d9f2866a15530bbd231b71017",
     "state": "clean"
   },
   "files": [
@@ -44,7 +44,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "823d0fb50000eb7e9d7949ea98a3dfc3d09f1c2374042c38da7fb71a7430540f"
+      "sha256": "2fd764831e0d1797a85f0a7f97a8a6d07aa14f61ef27035b608b00fbe95c2293"
     },
     {
       "path": "CODE_OF_CONDUCT.md",
@@ -60,7 +60,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "cccb8ca405f5ddbaab8d371e5990214656010d9c36c55cc365d17fe2bc36d65c"
+      "sha256": "e35d4e00f249694c8c46fa59939eb02331263d997cc356710cf90bec7f9e2317"
     },
     {
       "path": "SECURITY.md",
@@ -72,7 +72,7 @@
     },
     {
       "path": "app/DevHubDashboard.tsx",
-      "sha256": "78ce9f693f28917b75837a17aa2cfc541aa6b30a1279fefc47dbceb0f3d3bc9b"
+      "sha256": "84293cbe202819eb720cceb277019945372d207ebc266621b0e5bed2a9a37438"
     },
     {
       "path": "app/api/context/route.ts",
@@ -92,7 +92,7 @@
     },
     {
       "path": "app/globals.css",
-      "sha256": "ef1393969185f6683d725bd108df5b4f5fad21902f303a874e05baea87e361ba"
+      "sha256": "f07dc56b0273178a1419d1e78d2e9bb6e24c5d3f8959219d0d810fe4ed9cf5fc"
     },
     {
       "path": "app/layout.tsx",
@@ -104,7 +104,7 @@
     },
     {
       "path": "app/page.tsx",
-      "sha256": "569b51a58a6b4b244f2945e12e597340825d9b3d5f26e5a873dccfc847b44076"
+      "sha256": "67c0afce13db2c189ecf81d7eca509fdc24d0c1762aecae7ca74942127e71eba"
     },
     {
       "path": "build/sites-vite-plugin.ts",
@@ -164,11 +164,11 @@
     },
     {
       "path": "config/release-intent.json",
-      "sha256": "ed0a2d1bedef007b9a3c7d31939c5b51e49bbf19037d36da62daf1f0ce724068"
+      "sha256": "b1ab9232242cc52749fd1f2f2d65108c8584cefcd3f1c1ccd8edc4f7f317aad1"
     },
     {
       "path": "config/user-runtime-files.txt",
-      "sha256": "4c01bbc52c1e2ecd4f4fca306c0ade4d5bc834362ceb3f05d7364ea91ab771dc"
+      "sha256": "8e8ae3e076b706fd0a6a73488880a435d8d8b9127a492f0d8c342c67b01741c1"
     },
     {
       "path": "deploy/docker/Dockerfile",
@@ -192,7 +192,7 @@
     },
     {
       "path": "deploy/systemd/devhub-portable.env.example",
-      "sha256": "ef3b8bc311cd53f4ec4521c4d6d65eb6254eede0c10bf3273385f8fb26e0849d"
+      "sha256": "2fdf8ba26bee547bc50b51fb9f1c2904bca15c2ba6cf9b7913bf1b18ca825272"
     },
     {
       "path": "deploy/systemd/devhub-portable.service.example",
@@ -204,7 +204,7 @@
     },
     {
       "path": "docs/COMMUNITY_BOOTSTRAP.md",
-      "sha256": "3002833aa631c9a90aa2cb2f25aea8bb3f25c826724ab785238a7bdf36303d50"
+      "sha256": "8f8963b00f7260521625c44ae1d1bce1a9e4e698a7f229779404869c9be17d10"
     },
     {
       "path": "docs/CONFIGURATION.md",
@@ -244,7 +244,7 @@
     },
     {
       "path": "docs/INSTALLATION.md",
-      "sha256": "bff55d1b9e4959e23f9619582d39ca183f75e59f81df2dbd12d4502665b4440c"
+      "sha256": "2b56f8a20ee7bb2b7a7cb52d880a9ea6115e43b600405cf6876f649b311db762"
     },
     {
       "path": "docs/INTEGRATIONS_AGENTS.md",
@@ -252,7 +252,7 @@
     },
     {
       "path": "docs/INTEGRATIONS_CODEX.md",
-      "sha256": "c17bf23f5c47dc4751a47ee941a9339e79724b89f8110e7e2383590a5f1f4cdf"
+      "sha256": "d7723351ecd89c4ea782241985ac4a7d5e1b7e77fa15ebb1f7ac0e94b547c2aa"
     },
     {
       "path": "docs/INVENTORY_ADAPTERS.md",
@@ -301,6 +301,10 @@
     {
       "path": "docs/SETUP_RUN.md",
       "sha256": "711d35fa660fc14699ce5515f8be01a2bff88342392722edd17f7c91518fec97"
+    },
+    {
+      "path": "docs/SITES_COMPANION.md",
+      "sha256": "267743df4f1ee9074ede668e4d8cb7857b5fec4cc1932721d2e90fcd980d40a7"
     },
     {
       "path": "docs/STEWARDSHIP.md",
@@ -719,12 +723,20 @@
       "sha256": "ab9abc7ae6c343b34884a7640478737856db16e9168cbcb86ee013e4b53bf0c2"
     },
     {
+      "path": "lib/sites-companion.d.mts",
+      "sha256": "1e2ba4467df0c22deac5e673b527a951bdb6b73addb65d46acfc413669589130"
+    },
+    {
+      "path": "lib/sites-companion.mjs",
+      "sha256": "9ad10205b58ab0e67634c1af0489739128ca55e919526708602ed5b81370ba34"
+    },
+    {
       "path": "lib/status-bridge.d.mts",
-      "sha256": "e456af476c36ce2b830c970981ae75be8c0d4d3dcfe898f9bc5fee59d552724c"
+      "sha256": "ed3eac7780e02b7ac5ffded5c993ff3f2efb3a5d215de14ccc31d9d5fd33c89a"
     },
     {
       "path": "lib/status-bridge.mjs",
-      "sha256": "94e7f52b070fdc9bf6be5976f1b8336d252ec182a948fa5294b4f0ff4e69ee39"
+      "sha256": "107da55c1e6c8c50d05ca0886aaad96ed8d4c21ea1983a4c63a4d492c369ce42"
     },
     {
       "path": "lib/status-polling.d.mts",
@@ -776,11 +788,11 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "300c6b741cca93d6de76a5329d154a80dcfa6d4b720825ad60390681a8e3f0ec"
+      "sha256": "6ae8ced3924da498e306dc91d61a46e65d044c4b2ca8ed16f7ad5fe11f7235b9"
     },
     {
       "path": "package.json",
-      "sha256": "e98c296a0fa1c77649d40ba2043c025b8479b889d301360d1d19717753c05bfe"
+      "sha256": "9334fa5500b3a90acc0d395db2fc80b83bb1956deff6112b355af4d289410ac8"
     },
     {
       "path": "plugins/devhub/.codex-plugin/plugin.json",
@@ -788,7 +800,7 @@
     },
     {
       "path": "plugins/devhub/skills/devhub-registry/SKILL.md",
-      "sha256": "62579610517d996f979a4c32519e31daa68867082f54bbb7b98d58892bdd7741"
+      "sha256": "6e45e09e4c750ac3c4c27089c21ac9eee4eb2718bf39efb18e78a190200f37ce"
     },
     {
       "path": "plugins/devhub/skills/devhub-registry/agents/openai.yaml",
@@ -876,7 +888,7 @@
     },
     {
       "path": "scripts/devhub.mjs",
-      "sha256": "6df86219cb443d178054c83803cc6e7f951f340d62abaceb2955db3cdae1dea5"
+      "sha256": "8a7316625cda81353d72e4aea7e339ea67d5da2fff1e617b6f2d0c7e28ec1f4e"
     },
     {
       "path": "scripts/discovery-inbox.mjs",
@@ -967,6 +979,10 @@
       "sha256": "312e7972258ef397e4befeed4119b9bb337e877a38b11cf6fa08cafd670f50ad"
     },
     {
+      "path": "scripts/sites-companion.mjs",
+      "sha256": "59c7e351e2459993e21c7c60f1946f0b1c487633c673ca528269f9dbc7942c10"
+    },
+    {
       "path": "scripts/verify-public-manifest.mjs",
       "sha256": "49a1d1e939de10496fe12f2ae62899ac324d6fb6135d26af604511984a49c5d7"
     },
@@ -984,7 +1000,7 @@
     },
     {
       "path": "tests/agent-setup.test.mjs",
-      "sha256": "83f9ad752a4b8a12c3ae4b541ebab060fc0bc7063892b4ac81cc305cb7dee4c7"
+      "sha256": "3d3ca92582c8744696501fe73ce34d83a731107d4d5b8bed097984fa36e7eb74"
     },
     {
       "path": "tests/catalog-init.test.mjs",
@@ -1208,7 +1224,7 @@
     },
     {
       "path": "tests/onboard-apply.test.mjs",
-      "sha256": "b141fae03a99fbc1f7708d3033c763b80899ca93a351394126171b8e0889c688"
+      "sha256": "942c0359b58cac7f4468bb6cb373d5117dd125e69fb2ecc5bcca93f6dce61036"
     },
     {
       "path": "tests/onboard.test.mjs",
@@ -1244,7 +1260,7 @@
     },
     {
       "path": "tests/rendered-html.test.mjs",
-      "sha256": "18e9716e80bed74248d3b7216ebb9b9c8cc1ba0c0f0ec82f5edf07f92270c375"
+      "sha256": "5708292776f25dce2e7b227dc894b6c4d225f5a3c30abd224b44772950eba02a"
     },
     {
       "path": "tests/semantic-diff.test.mjs",
@@ -1283,8 +1299,12 @@
       "sha256": "2b53e97742012c4967a50a810112f50089a12401a2ca79402518007ad0db3db2"
     },
     {
+      "path": "tests/sites-companion.test.mjs",
+      "sha256": "8e3f630de2fa5b517a5d365474775c328830bd877c67e3e8cfb9eac8a2c31086"
+    },
+    {
       "path": "tests/status-bridge.test.mjs",
-      "sha256": "af19563fb9852628a976fe82d3ec97f58381252221b52368b6d20a2d9c859fc3"
+      "sha256": "bf0b47691d0bd28a22806142d10caaa8e3c5589b57509e806a4dcf9a1ed08cda"
     },
     {
       "path": "tests/status-polling.test.mjs",
