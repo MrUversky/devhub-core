@@ -15,7 +15,6 @@ source "$DEVHUB_CONFIG"
 set +a
 
 : "${DEVHUB_REPOSITORY_URL:?DEVHUB_REPOSITORY_URL is required}"
-: "${DEVHUB_BRANCH:?DEVHUB_BRANCH is required}"
 : "${DEVHUB_ROOT:?DEVHUB_ROOT is required}"
 
 case "$DEVHUB_ROOT" in
@@ -28,7 +27,37 @@ case "$DEVHUB_ROOT" in
     exit 64
     ;;
 esac
-git check-ref-format --branch "$DEVHUB_BRANCH" >/dev/null
+
+DEVHUB_SOURCE_REF=""
+DEVHUB_SOURCE_LABEL=""
+if [[ -n "${DEVHUB_RELEASE_TAG:-}" ]]; then
+  [[ -z "${DEVHUB_BRANCH:-}" ]] || {
+    echo "Configure DEVHUB_RELEASE_TAG or DEVHUB_BRANCH, never both" >&2
+    exit 64
+  }
+  [[ -n "${DEVHUB_EXPECTED_COMMIT:-}" ]] || {
+    echo "DEVHUB_EXPECTED_COMMIT is required with DEVHUB_RELEASE_TAG" >&2
+    exit 64
+  }
+  [[ "$DEVHUB_EXPECTED_COMMIT" =~ ^[0-9a-f]{40,64}$ ]] || {
+    echo "DEVHUB_EXPECTED_COMMIT must be one full hexadecimal commit" >&2
+    exit 64
+  }
+  git check-ref-format "refs/tags/$DEVHUB_RELEASE_TAG" >/dev/null
+  DEVHUB_SOURCE_REF="refs/devhub/releases/$DEVHUB_RELEASE_TAG"
+  DEVHUB_SOURCE_LABEL="tag $DEVHUB_RELEASE_TAG"
+elif [[ -n "${DEVHUB_BRANCH:-}" ]]; then
+  [[ -z "${DEVHUB_EXPECTED_COMMIT:-}" ]] || {
+    echo "DEVHUB_EXPECTED_COMMIT belongs only with DEVHUB_RELEASE_TAG" >&2
+    exit 64
+  }
+  git check-ref-format --branch "$DEVHUB_BRANCH" >/dev/null
+  DEVHUB_SOURCE_REF="refs/remotes/origin/$DEVHUB_BRANCH"
+  DEVHUB_SOURCE_LABEL="branch $DEVHUB_BRANCH"
+else
+  echo "DEVHUB_RELEASE_TAG or DEVHUB_BRANCH is required" >&2
+  exit 64
+fi
 
 DEVHUB_REPOSITORY="$DEVHUB_ROOT/repository.git"
 DEVHUB_RELEASES="$DEVHUB_ROOT/releases"
@@ -44,10 +73,23 @@ else
   }
 fi
 
-git -C "$DEVHUB_REPOSITORY" fetch --quiet --prune origin \
-  "+refs/heads/$DEVHUB_BRANCH:refs/remotes/origin/$DEVHUB_BRANCH"
-DEVHUB_SHA="$(git -C "$DEVHUB_REPOSITORY" rev-parse "refs/remotes/origin/$DEVHUB_BRANCH^{commit}")"
+if [[ -n "${DEVHUB_RELEASE_TAG:-}" ]]; then
+  git -C "$DEVHUB_REPOSITORY" fetch --quiet origin \
+    "+refs/tags/$DEVHUB_RELEASE_TAG:$DEVHUB_SOURCE_REF"
+  [[ "$(git -C "$DEVHUB_REPOSITORY" cat-file -t "$DEVHUB_SOURCE_REF")" == "tag" ]] || {
+    echo "DEVHUB_RELEASE_TAG must name an annotated tag" >&2
+    exit 65
+  }
+else
+  git -C "$DEVHUB_REPOSITORY" fetch --quiet --prune origin \
+    "+refs/heads/$DEVHUB_BRANCH:$DEVHUB_SOURCE_REF"
+fi
+DEVHUB_SHA="$(git -C "$DEVHUB_REPOSITORY" rev-parse "$DEVHUB_SOURCE_REF^{commit}")"
 [[ "$DEVHUB_SHA" =~ ^[0-9a-f]{40,64}$ ]]
+if [[ -n "${DEVHUB_RELEASE_TAG:-}" && "$DEVHUB_SHA" != "$DEVHUB_EXPECTED_COMMIT" ]]; then
+  echo "Annotated tag does not peel to DEVHUB_EXPECTED_COMMIT" >&2
+  exit 65
+fi
 DEVHUB_RELEASE="$DEVHUB_RELEASES/$DEVHUB_SHA"
 
 DEVHUB_BUILD_DIR=""
@@ -79,4 +121,4 @@ fi
 DEVHUB_NEXT_LINK="$DEVHUB_ROOT/.current.$DEVHUB_SHA.$$"
 ln -s "$DEVHUB_RELEASE" "$DEVHUB_NEXT_LINK"
 mv -Tf "$DEVHUB_NEXT_LINK" "$DEVHUB_CURRENT"
-printf 'Installed DevHub %s from %s@%s\n' "$DEVHUB_SHA" "$DEVHUB_REPOSITORY_URL" "$DEVHUB_BRANCH"
+printf 'Installed DevHub %s from %s (%s)\n' "$DEVHUB_SHA" "$DEVHUB_REPOSITORY_URL" "$DEVHUB_SOURCE_LABEL"

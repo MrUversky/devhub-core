@@ -4,7 +4,18 @@ Notable changes to the public DevHub snapshot are recorded here.
 
 ## Unreleased
 
-## 1.0.0-rc.4 — Pending release
+## 1.0.0-rc.5 — Pending release
+
+### Added
+
+- A reviewed Codex community bootstrap composes the exact public installer,
+  doctors, separate catalog, bounded onboarding, isolated apply, private
+  Docker/systemd deployment and read-only MCP without a second setup engine.
+- Local Docker stays loopback-only with an explicit catalog build context;
+  portable systemd can pin one annotated release tag to its separately
+  verified peeled commit without enabling unattended updates.
+
+## 1.0.0-rc.4 — 2026-08-21
 
 ### Fixed
 

@@ -12,8 +12,22 @@ RUN npm ci
 
 COPY . .
 
+# Compose supplies the reviewed catalog as an independent build context. The
+# default context is this snapshot's fictional demo catalog; a real bootstrap
+# points DEVHUB_CATALOG_CONTEXT at its separate Git-backed catalog checkout.
+# Replacing the directory avoids retaining demo projects that are absent from
+# the reviewed catalog.
+RUN rm -rf /app/catalog
+COPY --from=devhub_catalog . /app/catalog
+
+ARG DEVHUB_INSTANCE_MODE=demo
+ARG DEVHUB_INSTANCE_LABEL="Public demo"
+ENV DEVHUB_INSTANCE_MODE=${DEVHUB_INSTANCE_MODE} \
+    DEVHUB_INSTANCE_LABEL=${DEVHUB_INSTANCE_LABEL}
+
 # Fail the image build before packaging a stale/invalid catalog or broken app.
-RUN npm run devhub -- validate --check \
+RUN npm run devhub -- validate \
+    && npm run devhub -- validate --check \
     && npm run lint \
     && npm test \
     && npm audit --omit=dev --audit-level=high

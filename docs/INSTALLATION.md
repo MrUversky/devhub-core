@@ -14,6 +14,12 @@ The dashboard has no application-layer authentication. MCP defaults to the
 deployment's network boundary and may optionally require a bearer token; that
 token does not protect the dashboard.
 
+Codex users can use the preview-first
+[community bootstrap](COMMUNITY_BOOTSTRAP.md) instead of executing this guide
+as a shell checklist. The same reviewed commands and boundaries remain
+authoritative; Codex keeps their machine output internal and asks only for
+recognizable choices and explicit write approval.
+
 ## Coding-agent workflow runtime
 
 The portable Codex plugin installs workflow guidance only, and an MCP
@@ -96,7 +102,7 @@ Then install one exact version without `sudo` or npm. Both paths passed to the
 installer must be absolute:
 
 ```bash
-VERSION=1.0.0-rc.4
+VERSION=1.0.0-rc.5
 ASSETS=/absolute/path/to/verified-assets
 RUNTIME="$ASSETS/devhub-cli-v$VERSION.tar.gz"
 SHA256=$(awk -v file="$(basename "$RUNTIME")" '$2 == file { print $1 }' "$ASSETS/SHA256SUMS")
@@ -199,6 +205,18 @@ capabilities, enables `no-new-privileges`, uses a read-only root filesystem and
 runs the application as a non-root user. Container health is `healthy` only
 after both the dashboard and a read-only MCP initialization succeed.
 
+For a real catalog, keep it in a separate Git repository and pass only its
+`catalog/` directory as the named build context. The public demo remains the
+default when this variable is omitted:
+
+```bash
+DEVHUB_CATALOG_CONTEXT=/absolute/catalog-repository/catalog \
+DEVHUB_HOST_ID=reviewed-host \
+DEVHUB_INSTANCE_MODE=private \
+DEVHUB_INSTANCE_LABEL="Private workspace" \
+docker compose -f deploy/docker/compose.yaml up --build -d
+```
+
 To change the host-side port without making the service public:
 
 ```bash
@@ -272,8 +290,9 @@ proxy or private-network tooling for TLS and remote access.
 
 The portable example installs verified commits into immutable release
 directories, then switches a `current` symlink atomically. Repository URL,
-branch, installation root, port and MCP auth mode all live in the external
-environment file; none are baked into the unit.
+exact annotated release tag and peeled commit (or a legacy reviewed branch),
+installation root, external catalog, port and MCP auth mode all live in the
+external environment file; none are baked into the unit.
 
 ```bash
 id -u devhub >/dev/null 2>&1 || \
@@ -295,12 +314,14 @@ sudo systemctl enable --now devhub.service
 Edit `/etc/devhub/devhub.env` before creating the installation directory. If
 you change `DEVHUB_ROOT` from `/opt/devhub`, use that path in the `install -d`
 command. Set `DEVHUB_REPOSITORY_URL` to the reviewed public repository,
-`DEVHUB_BRANCH` to the reviewed release branch and `DEVHUB_HOST_ID` to a host ID
-in `catalog/hosts.yaml`. Keep the file's `root:devhub` ownership and mode `0640`
-if it contains `DEVHUB_MCP_TOKEN`.
+`DEVHUB_RELEASE_TAG` to the exact annotated public tag,
+`DEVHUB_EXPECTED_COMMIT` to its separately verified peeled public commit and
+`DEVHUB_HOST_ID` to a host ID in the external catalog. Keep the file's
+`root:devhub` ownership and mode `0640` if it contains `DEVHUB_MCP_TOKEN`.
 
 The service never pulls code. Upgrades are explicit: the updater fetches the
-configured branch, installs dependencies in a commit-addressed directory, runs
+configured exact tag (or legacy reviewed branch), rejects lightweight tags and
+tag/commit drift, installs dependencies in a commit-addressed directory, runs
 catalog, lint, test and production-audit gates, and switches `current` only
 after all of them pass. Then restart and verify:
 
@@ -310,9 +331,10 @@ sudo systemctl restart devhub.service
 sudo systemctl status devhub.service
 ```
 
-For a stricter production policy, point `DEVHUB_BRANCH` at a protected release
-branch and review the fetched commit before running the updater. There is no
-timer or unattended self-update in the portable example.
+The exact tag path is the community default. Existing installations may retain
+`DEVHUB_BRANCH` for a protected release branch only after removing both tag
+fields and reviewing the fetched commit. There is no timer or unattended
+self-update in the portable example.
 
 ## Verify
 

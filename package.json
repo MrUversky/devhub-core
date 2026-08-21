@@ -1,6 +1,6 @@
 {
   "name": "devhub-self-hosted",
-  "version": "1.0.0-rc.4",
+  "version": "1.0.0-rc.5",
   "description": "Never lose track of what your agent shipped. Self-hosted operational context across laptops, servers, and clouds.",
   "license": "Apache-2.0",
   "private": true,
