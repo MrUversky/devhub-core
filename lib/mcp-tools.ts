@@ -1,5 +1,11 @@
 import { catalog, resolveServiceEndpoint, serviceKey, type Project, type Service } from "@/lib/catalog";
-import { evaluateReadiness } from "@/lib/readiness.mjs";
+import { evaluateReadiness, resolveServiceReadinessContext } from "@/lib/readiness.mjs";
+import {
+  resolveAccessFacts,
+  resolveCredentialInventory,
+  resolveServiceStewardshipContext,
+  stewardshipSearchTerms,
+} from "@/lib/stewardship.mjs";
 import { getCatalogStatuses } from "@/lib/status";
 
 function requireProject(projectId: string) {
@@ -29,7 +35,33 @@ function normalizeRepository(value: string | undefined) {
   return trimmed.toLowerCase();
 }
 
-function serviceSummary(service: Service) {
+function credentialSummary(credential: ReturnType<typeof resolveCredentialInventory>[number]) {
+  return {
+    id: credential.id,
+    provider: credential.provider,
+    purpose: credential.purpose,
+    secretRef: { kind: credential.secretRef.kind, configured: true },
+    consumers: credential.consumers,
+    owner: { steward: credential.ownerSteward, state: credential.ownerState },
+    payer: credential.payer ? { steward: credential.payerSteward, state: credential.payerState } : { steward: null, state: "missing" },
+    source: credential.source,
+    lastVerifiedAt: credential.lastVerifiedAt ?? null,
+    rotationDueAt: credential.rotationDueAt ?? null,
+    verificationState: credential.verificationState,
+  };
+}
+
+function stewardshipSummary(project: Project, service: Service) {
+  const context = resolveServiceStewardshipContext(project, service);
+  return {
+    ...context,
+    credentials: context.credentials.map((credential) => credentialSummary(credential)),
+  };
+}
+
+function serviceSummary(project: Project, service: Service) {
+  const readinessContext = resolveServiceReadinessContext(project, service);
+  const stewardshipContext = stewardshipSummary(project, service);
   return {
     id: service.id,
     name: service.name,
@@ -42,8 +74,13 @@ function serviceSummary(service: Service) {
     url: service.url ?? null,
     endpoint: service.endpoint ?? null,
     selectedEndpoint: resolveServiceEndpoint(service),
-    readiness: service.readiness ?? null,
-    readinessAssessment: evaluateReadiness(service.readiness),
+    readiness: readinessContext.readiness,
+    readinessContext: {
+      fields: readinessContext.fields,
+      evidenceProvenance: readinessContext.evidenceProvenance,
+    },
+    readinessAssessment: evaluateReadiness(readinessContext.readiness),
+    stewardship: stewardshipContext,
     links: service.links ?? [],
     hasProbe: Boolean(service.probe),
     hasRunbook: Boolean(service.commands && Object.keys(service.commands).length),
@@ -60,7 +97,10 @@ function projectSummary(project: Project) {
     registration: project.registration,
     repository: project.repository ?? null,
     tags: project.tags ?? [],
-    services: project.services.map(serviceSummary),
+    stewards: project.stewards ?? [],
+    access: resolveAccessFacts(project),
+    credentials: resolveCredentialInventory(project).map((credential) => credentialSummary(credential)),
+    services: project.services.map((service) => serviceSummary(project, service)),
   };
 }
 
@@ -79,30 +119,34 @@ export function searchProjects(query: string) {
       project.repository,
       ...(project.aliases ?? []),
       ...(project.tags ?? []),
-      ...project.services.flatMap((service) => [
-        service.id,
-        service.name,
-        service.kind,
-        service.runtime,
-        service.host,
-        service.endpoint?.canonical,
-        service.endpoint?.fallback,
-        service.readiness?.profile,
-        service.readiness?.owner,
-        service.readiness?.dataClassification,
-        service.readiness?.costModel,
-        service.readiness?.deployment?.provider,
-        service.readiness?.deployment?.revision,
-        ...(service.readiness?.dependencies?.flatMap((dependency) => [
-          dependency.id,
-          dependency.kind,
-          dependency.name,
-          dependency.provider,
-          dependency.criticality,
-        ]) ?? []),
-        ...(service.readiness?.evidence.flatMap((evidence) => [evidence.id, evidence.check, evidence.state, evidence.note]) ?? []),
-        ...(service.links ?? []).flatMap((link) => [link.id, link.type, link.label, link.url]),
-      ]),
+      ...project.services.flatMap((service) => {
+        const effectiveReadiness = resolveServiceReadinessContext(project, service).readiness;
+        return [
+          service.id,
+          service.name,
+          service.kind,
+          service.runtime,
+          service.host,
+          service.endpoint?.canonical,
+          service.endpoint?.fallback,
+          effectiveReadiness?.profile,
+          effectiveReadiness?.owner,
+          effectiveReadiness?.dataClassification,
+          effectiveReadiness?.costModel,
+          effectiveReadiness?.deployment?.provider,
+          effectiveReadiness?.deployment?.revision,
+          ...(effectiveReadiness?.dependencies?.flatMap((dependency) => [
+            dependency.id,
+            dependency.kind,
+            dependency.name,
+            dependency.provider,
+            dependency.criticality,
+          ]) ?? []),
+          ...(effectiveReadiness?.evidence.flatMap((evidence) => [evidence.id, evidence.check, evidence.state, evidence.note]) ?? []),
+          ...stewardshipSearchTerms(project, service),
+          ...(service.links ?? []).flatMap((link) => [link.id, link.type, link.label, link.url]),
+        ];
+      }),
     ].filter(Boolean).join(" ").toLowerCase().includes(needle))
     .map(projectSummary);
 }
@@ -117,7 +161,7 @@ export function getService(projectId: string, serviceId: string) {
   return {
     key: serviceKey(project.id, service.id),
     project: { id: project.id, title: project.title, repository: project.repository ?? null },
-    service: { ...serviceSummary(service), description: service.description ?? null },
+    service: { ...serviceSummary(project, service), description: service.description ?? null },
     host: host ?? null,
   };
 }

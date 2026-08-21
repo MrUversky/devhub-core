@@ -1,0 +1,18 @@
+{
+  "domains": [
+    {
+      "name": "app.fictional-studio.invalid",
+      "verified": true,
+      "gitBranch": null,
+      "customEnvironmentId": null,
+      "verification": [{ "value": "vercel-secret-shaped-domain-value" }]
+    },
+    {
+      "name": "feature.fictional-studio.invalid",
+      "verified": true,
+      "gitBranch": "feature/private-work",
+      "customEnvironmentId": null
+    }
+  ],
+  "pagination": { "count": 2, "next": null, "prev": null }
+}

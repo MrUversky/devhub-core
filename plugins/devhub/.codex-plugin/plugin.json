@@ -1,28 +1,34 @@
 {
   "name": "devhub",
-  "version": "0.7.0-alpha.1",
-  "description": "Reconcile projects, services and operational readiness with a self-hosted DevHub registry.",
+  "version": "0.7.0-alpha.5",
+  "description": "Never lose track of what your agent shipped. Preserve operational context across laptops, servers and clouds.",
   "author": {
     "name": "DevHub contributors"
   },
   "license": "Apache-2.0",
-  "keywords": ["service-registry", "developer-tools", "operations", "self-hosted"],
+  "keywords": ["agent-built-software", "operational-memory", "service-registry", "project-portfolio", "developer-tools", "self-hosted"],
   "skills": "./skills/",
   "interface": {
     "displayName": "DevHub",
-    "shortDescription": "Sync projects and inspect how safely they run.",
-    "longDescription": "Reconcile repository evidence with a self-hosted DevHub catalog and inspect App Passport readiness without inventing evidence. When a DevHub MCP server is configured, use it for read-only project, service, status and runbook lookup.",
+    "shortDescription": "The home for what you shipped",
+    "longDescription": "Git remembers the code. DevHub remembers how it runs. Your coding agent can build and deploy it; DevHub preserves what exists, where it runs, what is current and what to do next across projects, providers and devices. Reconcile services with a reviewed registry, inspect evidence-backed App Passport readiness and bounded provider inventory, and follow safe recovery guidance without storing secrets or executing production actions.",
     "developerName": "DevHub contributors",
     "category": "Developer Tools",
     "capabilities": ["Read", "Workflow"],
     "brandColor": "#111827",
     "defaultPrompt": [
+      "Set up my DevHub and build a reviewed map of everything I can safely discover.",
+      "Connect everything I can access, but only show the read-only plan and ask before authorization or catalog changes.",
+      "Refresh my DevHub and show only what is new, changed, stale or unclear.",
+      "Find this agent-built service again, explain what DevHub knows, what is stale or unknown, and give me the safest next step.",
       "Sync this project with DevHub.",
       "Where does this service run and how do I open it?",
       "Check DevHub for drift and propose a safe fix.",
       "Inspect this app's operational readiness and propose an App Passport.",
       "Review my DevHub portfolio and tell me what to inspect first.",
-      "Refresh the reviewed provider evidence for this service."
+      "Refresh the reviewed provider evidence for this service.",
+      "Inventory one reviewed provider scope and propose catalog candidates without applying them.",
+      "Make this host LIVE by previewing and applying only its reviewed private health routes."
     ]
   }
 }

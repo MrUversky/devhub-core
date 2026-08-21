@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "binding": {
+    "adapterId": "openai-project-inventory-v1",
+    "provider": "openai",
+    "scope": {
+      "kind": "project",
+      "id": "proj_fictional_pocket_ops",
+      "parent": {
+        "kind": "workspace",
+        "id": "org_fictional_studio"
+      }
+    },
+    "credentialRef": {
+      "kind": "keychain",
+      "locator": "generic-password:devhub:openai-admin"
+    },
+    "freshForSeconds": 3600,
+    "maxResources": 1,
+    "maxPages": 1,
+    "deadlineMs": 10000,
+    "maxResponseBytes": 1048576
+  },
+  "decisions": []
+}

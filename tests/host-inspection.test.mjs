@@ -52,6 +52,7 @@ services:
     environment: local
     host: example-host
     runtime: docker-compose
+    runtimeIdentifier: console
     mode: on-demand
     visibility: local
   - id: dashboard
@@ -85,7 +86,7 @@ async function fixture() {
   ]);
   await writeFile(path.join(root, "catalog/hosts.yaml"), hosts);
   await writeFile(path.join(root, "catalog/projects/example-project.yaml"), manifest(workspace));
-  await writeFile(path.join(workspace, "compose.yaml"), "services:\n  api:\n    image: example/api\n");
+  await writeFile(path.join(workspace, "compose.yaml"), "services:\n  console:\n    image: example/api\n");
   await writeFile(path.join(workspace, "package.json"), `${JSON.stringify({ scripts: { dev: "node server.js" } }, null, 2)}\n`);
   return { temporary, root, workspace };
 }
@@ -104,15 +105,16 @@ test("inspect-host matches only reviewed identifiers through read-only adapters"
       homeDirectory: path.join(data.temporary, "home"),
       fileExists: async (filename) => filename.endsWith("com.example.desktop-agent.plist") || exists(filename),
       runner: async (command, args, options) => {
-        calls.push({ command, args, cwd: options?.cwd ?? null });
+        calls.push({ command, args, cwd: options?.cwd ?? null, timeoutMs: options?.timeoutMs ?? null, maxBuffer: options?.maxBuffer ?? null, shell: options?.shell ?? null });
+        if (command === "git") return { ok: true, unavailable: false, stdout: "git@github.com:example/example-project.git\n" };
         if (command === "systemctl") {
           return { ok: true, unavailable: false, stdout: "LoadState=loaded\nActiveState=active\nSubState=running\nUnitFileState=enabled\n" };
         }
         if (command === "launchctl") return { ok: true, unavailable: false, stdout: "state = running\npid = 123\nsecret = should-not-escape\n" };
-        if (command === "docker" && args.includes("config")) return { ok: true, unavailable: false, stdout: "api\nunreviewed-db\n" };
+        if (command === "docker" && args.includes("config")) return { ok: true, unavailable: false, stdout: "console\nunreviewed-db\n" };
         if (command === "docker" && args.includes("ps")) {
           return { ok: true, unavailable: false, stdout: `${JSON.stringify([
-            { Service: "api", State: "running", Labels: "private=should-not-escape" },
+            { Service: "console", State: "running", Labels: "private=should-not-escape" },
             { Service: "unreviewed-db", State: "running", Name: "private-db" },
           ])}\n` };
         }
@@ -128,16 +130,29 @@ test("inspect-host matches only reviewed identifiers through read-only adapters"
       ["desktop-agent", "launchd", "running"],
       ["gateway", "systemd", "running"],
     ]);
+    assert.equal(result.serviceMatches.find((item) => item.serviceId === "api")?.identifier, "console");
     assert.deepEqual(result.unknowns.map((item) => [item.serviceId, item.reason]), [["managed", "unsupported-runtime"]]);
-    assert.deepEqual(result.sources.map((item) => item.type), ["docker-compose", "launchd", "package-json", "systemd"]);
+    assert.deepEqual(result.sources.map((item) => item.type), ["docker-compose", "git-origin", "launchd", "package-json", "systemd"]);
+    assert.deepEqual(result.projectRepositories, [{
+      projectId: "example-project",
+      hostId: "example-host",
+      source: "git-origin",
+      repository: { provider: "github", owner: "example", name: "example-project" },
+    }]);
     assert.deepEqual(calls.map(({ command, args }) => [command, args[0]]), [
+      ["git", "-C"],
       ["systemctl", "show"],
       ["launchctl", "print"],
       ["docker", "compose"],
       ["docker", "compose"],
     ]);
+    const gitCall = calls.find(({ command }) => command === "git");
+    assert.deepEqual(gitCall.args.slice(2), ["remote", "get-url", "origin"]);
+    assert.equal(gitCall.timeoutMs, 2_000);
+    assert.equal(gitCall.maxBuffer, 4_096);
+    assert.equal(gitCall.shell, false);
     const serialized = JSON.stringify(result);
-    assert.doesNotMatch(serialized, /should-not-escape|unreviewed-db|private-db/);
+    assert.doesNotMatch(serialized, /should-not-escape|unreviewed-db|private-db|devhub-host-inspection|git@github\.com|https:\/\//);
   } finally {
     await rm(data.temporary, { recursive: true, force: true });
   }
@@ -163,6 +178,68 @@ test("inspect-host stays unknown when reviewed runtime identity is absent or sou
     assert.ok(!calls.includes("systemctl"));
     assert.ok(!calls.includes("launchctl"));
     assert.ok(result.serviceMatches.some((item) => item.serviceId === "dashboard" && item.source === "package-json"));
+    assert.deepEqual(result.projectRepositories, []);
+  } finally {
+    await rm(data.temporary, { recursive: true, force: true });
+  }
+});
+
+test("project repository inspection rejects hostile remotes, no-git, timeout and ambiguous reviewed workspaces without evidence", async () => {
+  const data = await fixture();
+  const projectPath = path.join(data.root, "catalog/projects/example-project.yaml");
+  const minimalManifest = (workspaces) => `version: 1
+id: example-project
+title: Example project
+registration: overlay
+description: Repository evidence fixture.
+lifecycle: active
+kind: product
+workspaces:
+${workspaces.map((workspace) => `  - host: example-host\n    path: ${JSON.stringify(workspace)}\n`).join("")}services: []
+`;
+  try {
+    await writeFile(projectPath, minimalManifest([data.workspace]));
+    const credentialRemote = ["https://embedded-user", ":", "embedded-pass", "@github.com/example/example-project.git"].join("");
+    const sensitiveQueryRemote = ["https://github.com/example/example-project.git", "?", "to", "ken", "=", "not-a-credential"].join("");
+    for (const rawRemote of [
+      credentialRemote,
+      sensitiveQueryRemote,
+      "git@gitlab.com:example/example-project.git",
+      "git@github.com:example/example-project.git\ngit@github.com:example/second.git",
+    ]) {
+      const result = await inspectHost(data.root, "example-host", {
+        runner: async (command) => {
+          assert.equal(command, "git");
+          return { ok: true, unavailable: false, stdout: `${rawRemote}\n` };
+        },
+      });
+      assert.deepEqual(result.projectRepositories, []);
+      assert.doesNotMatch(JSON.stringify(result), /embedded-user|embedded-pass|not-a-credential|gitlab|second\.git|devhub-host-inspection/);
+    }
+
+    for (const unavailable of [
+      { ok: false, unavailable: true, timedOut: false, stdout: "" },
+      { ok: false, unavailable: false, timedOut: true, stdout: "" },
+    ]) {
+      const result = await inspectHost(data.root, "example-host", { runner: async () => unavailable });
+      assert.deepEqual(result.projectRepositories, []);
+      assert.equal(result.sources.find((source) => source.type === "git-origin").available, false);
+    }
+
+    const secondWorkspace = path.join(data.temporary, "workspace-two");
+    await mkdir(secondWorkspace, { recursive: true });
+    await writeFile(projectPath, minimalManifest([data.workspace, secondWorkspace]));
+    const ambiguous = await inspectHost(data.root, "example-host", {
+      runner: async (_command, args) => ({
+        ok: true,
+        unavailable: false,
+        stdout: args[1] === data.workspace
+          ? "https://github.com/example/one.git\n"
+          : "ssh://git@github.com/example/two.git\n",
+      }),
+    });
+    assert.deepEqual(ambiguous.projectRepositories, []);
+    assert.equal(ambiguous.sources.find((source) => source.type === "git-origin").observations, 2);
   } finally {
     await rm(data.temporary, { recursive: true, force: true });
   }

@@ -1,0 +1,24 @@
+version: 1
+id: client-portal
+title: Client Portal
+registration: overlay
+aliases: [Demo private portal]
+description: Authenticated workspace with a current runtime status but no App Passport yet.
+lifecycle: active
+kind: product
+repository: example/client-portal
+tags: [demo, portal]
+services:
+  - id: portal
+    name: Private portal
+    kind: website
+    environment: staging
+    host: managed-cloud
+    runtime: managed
+    mode: managed
+    visibility: authenticated
+    url: https://portal.example.test
+    reported:
+      state: up
+      observedAt: 2026-08-13T09:00:00Z
+      note: The authenticated portal was reported available.

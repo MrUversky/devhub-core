@@ -8,6 +8,23 @@ lifecycle: discovery
 kind: product
 repository: owner/repository
 tags: []
+readinessDefaults:
+  profile: personal
+  owner: Change me
+  dataClassification: unknown
+  costModel: unknown
+stewards:
+  - id: product-team
+    name: Change me
+    kind: team
+    source: operator
+stewardshipDefaults:
+  accountableOwner: product-team
+  operator: product-team
+  billingOwner: product-team
+  credentialOwner: product-team
+access: []
+credentials: []
 workspaces:
   - host: developer-laptop
     path: /absolute/path/to/project
@@ -35,16 +52,24 @@ services:
       url: http://127.0.0.1:3000/health
       successStatuses: [200]
       timeoutMs: 5000
+      # Optional private-host publisher recipe. The HTTPS probe URL must use
+      # the same path and the target must be a minimal 127.0.0.1 health route.
+      # publish:
+      #   type: tailscale-serve
+      #   visibility: tailnet
+      #   targetUrl: http://127.0.0.1:3000/api/health
+      #   path: /health/change-me
     readiness:
-      profile: personal
-      owner: Change me
-      dataClassification: unknown
-      costModel: unknown
       deployment:
         source: catalog
         provider: Change me
       dependencies: []
       evidence:
+        - id: ownership-attestation
+          check: ownership
+          state: unknown
+          source: operator
+          note: Replace with a reviewed ownership attestation and add observedAt and validUntil.
         - id: monitoring-status
           check: monitoring
           state: unknown

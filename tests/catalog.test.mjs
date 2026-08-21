@@ -1,14 +1,29 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
 const catalog = JSON.parse(await readFile(new URL("../app/generated/catalog.json", import.meta.url), "utf8"));
+let publicSnapshot = false;
+try {
+  await access(new URL("../.devhub-public-snapshot", import.meta.url));
+  publicSnapshot = true;
+} catch (error) {
+  if (error?.code !== "ENOENT") throw error;
+}
 
 test("catalog includes reviewed projects and unique identities", () => {
   assert.equal(catalog.version, 1);
+  assert.deepEqual(catalog.instance, publicSnapshot
+    ? { mode: "demo", label: "Public demo" }
+    : { mode: "private", label: "Private workspace" });
   assert.ok(catalog.hosts.length > 0);
   assert.ok(catalog.projects.length > 0);
   assert.ok(catalog.projects.reduce((sum, project) => sum + project.services.length, 0) > 0);
+  assert.equal(catalog.connections.version, 1);
+  assert.ok(["reviewed-profiles", "not-configured"].includes(catalog.connections.source));
+  for (const profile of catalog.connections.profiles) {
+    assert.deepEqual(Object.keys(profile).sort(), ["connectorId", "lastObservedAt", "state", "validUntil"]);
+  }
 
   const projectIds = catalog.projects.map((project) => project.id);
   assert.equal(new Set(projectIds).size, projectIds.length);

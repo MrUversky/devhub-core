@@ -1,5 +1,15 @@
-import { evaluateReadiness, PROFILE_EXPECTATIONS } from "../lib/readiness.mjs";
+import {
+  evaluateReadiness,
+  PROFILE_EXPECTATIONS,
+  resolveServiceReadinessContext,
+} from "../lib/readiness.mjs";
 import { validateEvidenceAdapterResult } from "../lib/evidence-adapters.mjs";
+import {
+  STEWARDSHIP_ROLES,
+  resolveAccessFacts,
+  resolveCredentialInventory,
+  resolveServiceStewardshipContext,
+} from "../lib/stewardship.mjs";
 
 const STATE_ORDER = Object.freeze({ drift: 0, missing: 1, stale: 2, unknown: 3 });
 const SEVERITY_ORDER = Object.freeze({ high: 0, medium: 1, low: 2 });
@@ -22,6 +32,16 @@ const NEXT_ACTIONS = Object.freeze({
   "deployment-url": "Open an owner review of the observed service URL before changing the catalog.",
   "deployment-host": "Open an owner review of the observed host before changing the catalog.",
   "recurring-cost": "Open an owner review of the linked recurring-cost evidence before changing provider state.",
+  "stewardship-accountableOwner": "Review who is accountable for this service and register a dated person or team assignment.",
+  "stewardship-operator": "Review who operates this service and register a dated person or team assignment.",
+  "stewardship-billingOwner": "Review who owns the bill; provider access and billing access remain separate facts.",
+  "stewardship-credentialOwner": "Review who owns credential rotation without copying the credential value into DevHub.",
+  "stewardship-single-owner": "Add a reviewed second person or team boundary for an important operational role; do not change provider access automatically.",
+  "access-freshness": "Refresh this exact access fact with its owner; do not infer access from another account or role.",
+  "credential-owner": "Review who currently owns this credential lifecycle without copying the credential value into DevHub.",
+  "credential-payer": "Review who pays for this credential's provider usage and record the steward reference.",
+  "credential-orphan": "Review whether this external credential reference still has a consumer and document its retained or retired state before any provider action.",
+  "credential-rotation": "Verify or rotate the credential in its external secret store, then refresh only its non-secret metadata.",
 });
 
 function asDate(now) {
@@ -31,7 +51,7 @@ function asDate(now) {
 }
 
 function serviceIdentity(project, service) {
-  return { project: project.id, service: service.id };
+  return { project: project.id, service: service?.id ?? null };
 }
 
 function finding(project, service, {
@@ -73,46 +93,51 @@ function reasonFor(check, state, evidence) {
   return `${check} is explicitly recorded as unknown: ${evidence.note}`;
 }
 
-function profileFindings(project, service, now) {
-  if (!service.readiness) {
+function profileFindings(project, service, context, assessment) {
+  const effectiveProfile = context.fields.profile.value;
+  const effectiveOwner = context.fields.owner.value;
+  if (!effectiveProfile) {
     const severity = service.mode === "always-on" || service.mode === "managed" ? "medium" : "low";
-    return [
+    const findings = [
       finding(project, service, {
         check: "readiness-profile",
         state: "unknown",
         reason: "No App Passport operating profile is registered, so expected readiness evidence cannot be evaluated.",
         severity,
       }),
-      finding(project, service, {
+    ];
+    if (!effectiveOwner && !assessment.checks.some((item) => item.check === "ownership")) {
+      findings.push(finding(project, service, {
         check: "ownership",
         state: "unknown",
-        reason: "No App Passport ownership evidence is registered for this service.",
+        reason: "No project or service owner context and no ownership evidence are registered for this service.",
         severity,
-      }),
-    ];
+      }));
+    }
+    return findings;
   }
 
-  const { profile } = service.readiness;
-  const assessment = evaluateReadiness(service.readiness, { now });
   return assessment.checks.flatMap((item) => {
     const { check, evidence: evidenceItem, state: effective, expected } = item;
     if (!["declared", "missing", "stale", "unknown"].includes(effective)) return [];
     if (!expected && !["missing", "stale", "unknown"].includes(effective)) return [];
     const state = effective === "declared" ? "unknown" : effective;
+    const reason = check === "ownership" && !evidenceItem && effectiveOwner
+      ? `Owner context is ${context.fields.owner.provenance === "project" ? "inherited from the project" : "registered on the service"}, but no service-specific ownership evidence is registered.`
+      : reasonFor(check, state, evidenceItem);
     return [finding(project, service, {
       check,
       state,
       evidence: evidenceItem,
-      reason: reasonFor(check, state, evidenceItem),
-      severity: severityFor(profile, check, state),
+      reason,
+      severity: severityFor(effectiveProfile, check, state),
     })];
   });
 }
 
-function operationalFindings(project, service, existingFindings, now) {
+function operationalFindings(project, service, existingFindings, assessment) {
   const findings = [];
   const existingByCheck = new Map(existingFindings.map((item) => [item.check, item]));
-  const assessment = evaluateReadiness(service.readiness, { now });
   const currentMonitoring = assessment.checks.some((item) => item.check === "monitoring" && item.state === "verified");
 
   if (service.mode === "always-on" && !service.probe && !currentMonitoring) {
@@ -142,6 +167,167 @@ function operationalFindings(project, service, existingFindings, now) {
   }
 
   return findings;
+}
+
+const STEWARDSHIP_ROLE_LABELS = Object.freeze({
+  accountableOwner: "accountable owner",
+  operator: "operator",
+  billingOwner: "billing owner",
+  credentialOwner: "credential owner",
+});
+
+function stewardshipEnabled(project, service) {
+  return Boolean(
+    project.stewards?.length
+    || project.stewardshipDefaults
+    || project.credentials?.length
+    || service.stewardship,
+  );
+}
+
+function stewardshipEvidence(role) {
+  return role.steward ? {
+    type: "reviewed-stewardship",
+    stewardId: role.steward.id,
+    name: role.steward.name,
+    kind: role.steward.kind,
+    source: role.steward.source,
+    observedAt: role.steward.observedAt ?? null,
+    validUntil: role.steward.validUntil ?? null,
+    provenance: role.provenance,
+  } : null;
+}
+
+function credentialEvidence(credential) {
+  return {
+    type: "credential-metadata",
+    credentialId: credential.id,
+    provider: credential.provider,
+    purpose: credential.purpose,
+    secretRef: { kind: credential.secretRef.kind, configured: true },
+    consumers: credential.consumers,
+    source: credential.source,
+    lastVerifiedAt: credential.lastVerifiedAt ?? null,
+    rotationDueAt: credential.rotationDueAt ?? null,
+    ownerState: credential.ownerState ?? null,
+    payerState: credential.payerState ?? null,
+    verificationState: credential.verificationState ?? null,
+  };
+}
+
+function credentialLifecycleFindings(project, service, credentials) {
+  const findings = [];
+  for (const credential of credentials) {
+    if (credential.ownerState !== "reviewed") {
+      findings.push(finding(project, service, {
+        check: "credential-owner",
+        state: credential.ownerState === "stale" ? "stale" : "unknown",
+        evidence: credentialEvidence(credential),
+        reason: credential.ownerState === "stale"
+          ? `Credential reference ${credential.id} points to an owner assignment that expired at ${credential.ownerSteward.validUntil}.`
+          : `Credential reference ${credential.id} has no current reviewed owner assignment.`,
+        uncertainty: "The historical owner label is context, not proof of current provider access or responsibility.",
+        severity: "medium",
+      }));
+    }
+    if (credential.payerState !== "reviewed") {
+      findings.push(finding(project, service, {
+        check: "credential-payer",
+        state: credential.payerState === "stale" ? "stale" : "unknown",
+        evidence: credentialEvidence(credential),
+        reason: credential.payerState === "stale"
+          ? `Credential reference ${credential.id} points to a payer assignment that expired at ${credential.payerSteward.validUntil}.`
+          : `Credential reference ${credential.id} has no current reviewed payer.`,
+        uncertainty: "Credential ownership, provider access and responsibility for the bill are separate facts.",
+        severity: "low",
+      }));
+    }
+    if (credential.verificationState === "rotation-due") {
+      findings.push(finding(project, service, {
+        check: "credential-rotation",
+        state: "stale",
+        evidence: credentialEvidence(credential),
+        reason: `Credential reference ${credential.id} reached its reviewed rotation due date at ${credential.rotationDueAt}.`,
+        uncertainty: "DevHub does not know the secret value or whether the provider has already rotated it.",
+        severity: "medium",
+      }));
+    }
+  }
+  return findings;
+}
+
+function stewardshipFindings(project, service, now) {
+  if (!stewardshipEnabled(project, service)) return [];
+  const context = resolveServiceStewardshipContext(project, service, { now });
+  const findings = [];
+
+  for (const roleName of STEWARDSHIP_ROLES) {
+    const role = context.roles[roleName];
+    if (role.state === "reviewed") continue;
+    findings.push(finding(project, service, {
+      check: `stewardship-${roleName}`,
+      state: role.state === "stale" ? "stale" : "unknown",
+      evidence: stewardshipEvidence(role),
+      reason: role.state === "stale"
+        ? `The reviewed ${STEWARDSHIP_ROLE_LABELS[roleName]} assignment expired at ${role.steward.validUntil}; it remains context, not current evidence.`
+        : `No reviewed ${STEWARDSHIP_ROLE_LABELS[roleName]} is assigned to this service.`,
+      severity: ["accountableOwner", "operator"].includes(roleName) ? "medium" : "low",
+    }));
+  }
+
+  if (context.summary.singlePersonRisk) {
+    const reviewedRoles = Object.fromEntries(STEWARDSHIP_ROLES.flatMap((roleName) => {
+      const role = context.roles[roleName];
+      return role.state === "reviewed" ? [[roleName, stewardshipEvidence(role)]] : [];
+    }));
+    findings.push(finding(project, service, {
+      check: "stewardship-single-owner",
+      state: "unknown",
+      evidence: { type: "reviewed-stewardship-concentration", roles: reviewedRoles },
+      reason: "Multiple important roles resolve to one reviewed person and no reviewed team assignment provides a shared operating boundary.",
+      uncertainty: "This is a continuity question, not proof that the current owner is inappropriate or lacks provider access.",
+      severity: service.mode === "always-on" || service.mode === "managed" ? "medium" : "low",
+    }));
+  }
+
+  findings.push(...credentialLifecycleFindings(project, service, context.credentials));
+  return findings;
+}
+
+function accessFreshnessFindings(project, now) {
+  return resolveAccessFacts(project, { now }).flatMap((fact) => fact.freshnessState !== "stale" ? [] : [finding(project, null, {
+    check: "access-freshness",
+    state: "stale",
+    evidence: {
+      type: "reviewed-access",
+      accessId: fact.id,
+      kind: fact.kind,
+      subject: fact.subject,
+      recordedAccess: fact.recordedAccess,
+      effectiveAccess: fact.access,
+      source: fact.source,
+      observedAt: fact.observedAt ?? null,
+      validUntil: fact.validUntil ?? null,
+      freshnessState: fact.freshnessState,
+    },
+    reason: `The reviewed ${fact.kind} access fact for ${fact.subject} expired at ${fact.validUntil}; effective access is unknown.`,
+    uncertainty: "Expired access evidence neither proves access remains nor proves it was revoked.",
+    severity: "low",
+  })]);
+}
+
+function orphanedCredentialFindings(project, now) {
+  return resolveCredentialInventory(project, { now }).flatMap((credential) => credential.consumers.length ? [] : [
+    finding(project, null, {
+      check: "credential-orphan",
+      state: "unknown",
+      evidence: credentialEvidence(credential),
+      reason: `Credential reference ${credential.id} has no reviewed service consumers.`,
+      uncertainty: "No registered consumer does not prove the provider credential is unused; review is required before any external action.",
+      severity: "low",
+    }),
+    ...credentialLifecycleFindings(project, null, [credential]),
+  ]);
 }
 
 function normalizedUrl(value) {
@@ -270,7 +456,7 @@ function reviewedComparableValue(observation, field) {
   return typeof value === "string" && value.trim() ? value : null;
 }
 
-function providerDriftFindings(project, service, observation, now) {
+function providerDriftFindings(project, service, observation, now, effectiveProfile) {
   const findings = [];
   const deploymentResolution = reviewedResolution(service, "deployment", observation, now);
   const deployment = observation.deployment ?? {};
@@ -340,7 +526,7 @@ function providerDriftFindings(project, service, observation, now) {
       state: "stale",
       evidence: providerEvidenceRef(observation, { check }),
       reason: `Normalized ${check} evidence expired at ${item.validUntil}; the provider observation does not establish current recoverability.`,
-      severity: ["customer-facing", "sensitive"].includes(service.readiness?.profile) ? "high" : "medium",
+      severity: ["customer-facing", "sensitive"].includes(effectiveProfile) ? "high" : "medium",
     }));
   }
 
@@ -366,7 +552,7 @@ function providerDriftFindings(project, service, observation, now) {
 function compareFindings(left, right) {
   return SEVERITY_ORDER[left.severity] - SEVERITY_ORDER[right.severity]
     || left.project.localeCompare(right.project)
-    || left.service.localeCompare(right.service)
+    || (left.service ?? "").localeCompare(right.service ?? "")
     || left.check.localeCompare(right.check)
     || STATE_ORDER[left.state] - STATE_ORDER[right.state];
 }
@@ -380,9 +566,16 @@ export function reviewPortfolio(sourceCatalog, { now, providerEvidence = [] } = 
   for (const { manifest: project } of sourceCatalog.projects) {
     for (const service of project.services ?? []) {
       serviceCount += 1;
-      const readinessFindings = profileFindings(project, service, reviewedAt);
-      findings.push(...readinessFindings, ...operationalFindings(project, service, readinessFindings, reviewedAt));
+      const context = resolveServiceReadinessContext(project, service);
+      const assessment = evaluateReadiness(context.readiness, { now: reviewedAt });
+      const readinessFindings = profileFindings(project, service, context, assessment);
+      findings.push(
+        ...readinessFindings,
+        ...operationalFindings(project, service, readinessFindings, assessment),
+        ...stewardshipFindings(project, service, reviewedAt),
+      );
     }
+    findings.push(...orphanedCredentialFindings(project, reviewedAt), ...accessFreshnessFindings(project, reviewedAt));
   }
 
   const projectsById = new Map(sourceCatalog.projects.map(({ manifest }) => [manifest.id, manifest]));
@@ -392,7 +585,8 @@ export function reviewPortfolio(sourceCatalog, { now, providerEvidence = [] } = 
     const service = project?.services?.find((candidate) => candidate.id === observation.identity.serviceId);
     if (!project || !service) continue;
     matchedProviderObservations += 1;
-    findings.push(...providerDriftFindings(project, service, observation, reviewedAt));
+    const context = resolveServiceReadinessContext(project, service);
+    findings.push(...providerDriftFindings(project, service, observation, reviewedAt, context.fields.profile.value));
   }
   findings.sort(compareFindings);
 
@@ -429,7 +623,7 @@ export function formatPortfolioReview(review) {
   ];
   if (!review.findings.length) return [...lines, "No catalog-only readiness or recovery gaps found."].join("\n");
   for (const item of review.findings) {
-    lines.push(`${item.severity.toUpperCase()} ${item.project}/${item.service} ${item.check} [${item.state}]: ${item.reason}`);
+    lines.push(`${item.severity.toUpperCase()} ${item.project}${item.service ? `/${item.service}` : ""} ${item.check} [${item.state}]: ${item.reason}`);
     lines.push(`  Next: ${item.recommendedNextAction}`);
   }
   return lines.join("\n");

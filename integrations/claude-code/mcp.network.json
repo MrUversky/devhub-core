@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "devhub": {
+      "type": "http",
+      "url": "https://devhub.example.com/mcp"
+    }
+  }
+}
