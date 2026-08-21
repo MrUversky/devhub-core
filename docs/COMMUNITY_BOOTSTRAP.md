@@ -1,21 +1,27 @@
 # Community first-run with Codex
 
-This is the reviewed path from a blank Codex workspace to one self-hosted
-DevHub dashboard and read-only MCP. The person describes recognizable choices;
-Codex performs the commands, keeps machine output internal and pauses at every
-write boundary. The workflow composes the existing installer, `init-catalog`,
-`onboard`, `onboard-apply`, Docker/systemd and `agent-setup` contracts. It is
-not another setup engine or catalog database.
+This is the implementation runbook behind the public GitHub entry point. It
+takes a blank Codex workspace to one self-hosted DevHub dashboard and read-only
+MCP by composing the existing installer, `init-catalog`, `onboard`,
+`onboard-apply`, Docker/systemd and `agent-setup` contracts.
+It is not another setup engine or catalog database.
 
-Start a blank task with a request such as:
+## Human entry point
 
-> Set up my DevHub from the exact public release. Keep it private, show me each
-> write before applying it, and ask which projects and provider sources I want
-> included.
+Share only the public repository:
 
-The user is never expected to type shell commands, assemble JSON, choose an
-internal schema or interpret doctor output. Commands below define the evidence
-Codex must obtain, not homework for the user.
+<https://github.com/MrUversky/devhub-core>
+
+In a new Codex task, the person says:
+
+> Set up DevHub for me from this repository.
+
+That single request is enough. Everything below is instruction for Codex, not
+wording the person must copy into a prompt. Codex selects and verifies the
+reviewed public release, keeps machine output internal, asks only recognizable
+product choices, and pauses at every write boundary. The user is never expected to type shell commands, assemble JSON, select an
+internal schema or interpret doctor output. Do not ask the person to choose a
+tag or repeat the workflow's safety language in their prompt.
 
 ## Supported boundary
 

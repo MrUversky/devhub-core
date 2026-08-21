@@ -2,7 +2,7 @@
   "manifestVersion": 2,
   "exporterVersion": 1,
   "source": {
-    "commit": "82b7b1dcc0d1ee0d9f2866a15530bbd231b71017",
+    "commit": "5dbef13dd5ec01c8b9f15ce92802cbac3618d015",
     "state": "clean"
   },
   "files": [
@@ -60,7 +60,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "e35d4e00f249694c8c46fa59939eb02331263d997cc356710cf90bec7f9e2317"
+      "sha256": "6c98dfa72bc46daf5a93fd3cfb037e8891339e012bdba9676801bbe05737e2f2"
     },
     {
       "path": "SECURITY.md",
@@ -204,7 +204,7 @@
     },
     {
       "path": "docs/COMMUNITY_BOOTSTRAP.md",
-      "sha256": "8f8963b00f7260521625c44ae1d1bce1a9e4e698a7f229779404869c9be17d10"
+      "sha256": "c3cd3c20ef590a3a63cbc99dae715bb4757d79a391a872812ea96bc7a85ed583"
     },
     {
       "path": "docs/CONFIGURATION.md",
@@ -252,7 +252,7 @@
     },
     {
       "path": "docs/INTEGRATIONS_CODEX.md",
-      "sha256": "d7723351ecd89c4ea782241985ac4a7d5e1b7e77fa15ebb1f7ac0e94b547c2aa"
+      "sha256": "928328baa80cd107bc41415411c3cf097ec99afad96f6322c6c84ab8e8bd52f4"
     },
     {
       "path": "docs/INVENTORY_ADAPTERS.md",
