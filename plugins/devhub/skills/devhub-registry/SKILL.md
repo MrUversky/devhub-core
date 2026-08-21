@@ -9,6 +9,11 @@ Treat the configured DevHub instance as the operational map for its owner. Use a
 
 ## Route the request
 
+- For “set up DevHub from scratch”, “install DevHub in a blank Codex”, “set up
+  my community DevHub”, or an equivalent first-run request: follow
+  **Community first-run bootstrap** below before ordinary Connected Setup. Do
+  the machine work yourself and ask only recognizable choices plus explicit
+  write approvals; do not turn the installation guide into user homework.
 - For “set up my DevHub”, “connect everything I can access”, “Build my map”, “refresh my DevHub”, or “подключи всё, к чему у меня есть доступ”: first verify the local workflow runtime under **Verify the Connected Setup runtime** below. Then run `devhub setup --json`, or its wrapper from the one explicitly supplied compatible checkout. Report recommended connectors, exact detection evidence and the Build-my-map plan. Detection is not authorization or account access: do not start OAuth, open provider pages, read credential values or modify the catalog. A planned connector remains planned even when its local marker is detected.
 - For “where is it?”, “is it up?”, or “how do I open, start, or recover it?”: query an available DevHub MCP server and answer from catalog evidence.
 - For “make this host live” or “configure host monitoring”: when an exact reviewed probe contains `publish.type: tailscale-serve`, preview it on that target with `devhub setup-host-monitoring <host-id> --json`. Use `--apply` only when the user asked to configure monitoring and the preview has no identity or path conflict. Never enable Funnel or run `tailscale serve reset`.
@@ -30,6 +35,90 @@ a review-only overlay proposal, but the command never writes or applies it.
 Never invent services, hosts, workspaces, commands or probes from provider
 status. A missing resource is `unknown`, not proof that it is orphaned, unused
 or safe to delete.
+
+## Community first-run bootstrap
+
+This is one Codex-led composition of existing contracts, not a second setup
+engine. Use the public `MrUversky/devhub-core` repository and its
+`devhub-community` marketplace. Keep all release JSON and command output
+internal; speak in product choices and outcomes.
+
+1. Perform a read-only platform preflight. The full path is supported on macOS
+   and Linux. On Windows, say that installation, local discovery, dashboard
+   service operation and a Windows service installer are not proven by this
+   release; report the full first-run as unsupported and do not improvise around
+   that boundary.
+2. Ask exactly one deployment choice: **Run on this computer (recommended)**
+   for Docker on loopback, **Use an existing private Linux host**, or **Not
+   now**. The remote option requires an explicitly selected known host,
+   separately approved access and an existing reviewed private dashboard/MCP
+   boundary. Never create ingress, a firewall rule, VPN, proxy, DNS or
+   Tailscale route to make it work.
+3. Resolve one exact annotated public tag and its GitHub Release. Never use
+   `main`, `latest`, a lightweight tag or mixed releases. Download source,
+   runtime, installer, SBOM, `SHA256SUMS`, `RELEASE-EVIDENCE.json` and the
+   published platform reports into a new temporary directory. Verify the tag
+   and peeled public commit, release tag, every checksum, format/version, clean
+   source state and bound artifact digests. Stop on unknown or contradiction.
+4. Show the exact version and user-owned paths, then request **Install the
+   verified DevHub CLI**. Only that approval permits the checksum-pinned
+   standalone installer. Never use `npm -g`, `sudo`, an unpinned URL or a
+   checkout symlink. Run both `devhub doctor --workflow --json` and `devhub
+   doctor --install --json` internally before any provider I/O.
+5. If the generic plugin is not installed, preview and install the same exact
+   tag with `codex plugin marketplace add MrUversky/devhub-core --ref
+   <EXACT_TAG>` and `codex plugin add devhub@devhub-community`. The plugin has
+   no endpoint or secret. If Codex must restart to load it, return one resume
+   prompt; do not claim the current process loaded new guidance.
+6. Ask only for explicit local folders, supported provider sources and one
+   recognizable reviewed/proposed host identity. Never infer home-directory
+   roots, broaden provider scope, start authorization or ask the user to
+   assemble JSON. Treat every source as unselected until named.
+7. Preview a separate user-owned Git catalog repository, normally with
+   `catalog/` below `${XDG_DATA_HOME:-$HOME/.local/share}/devhub/catalog-repository`.
+   Refuse cloud/FileProvider paths, unmanaged non-empty destinations and dirty
+   catalog repositories. Use the existing `devhub init-catalog` preview, show
+   the planned paths and initial commit, then request **Create the catalog
+   repository** before `init-catalog --apply`, `git init` and that commit.
+   Validate and record the exact catalog commit. Do not modify discovered
+   project repositories.
+8. Run the existing `devhub onboard` with only selected sources/roots, the
+   host ID and explicit catalog/profile/generated paths. Present its first
+   ambiguity in plain language. Keep the artifact-bound review and approved
+   plan outside the catalog repository. `onboard` remains preview-only.
+9. Preview `devhub onboard-apply` and show the exact planned catalog paths.
+   Request **Create the isolated catalog proposal** before `--apply`. The
+   existing apply contract alone owns plan/revision/fingerprint/freshness,
+   lock, worktree, validation and cleanup. Repeat the same exact apply and
+   require `already-committed` with the same commit. Accepting or merging the
+   local proposal is another explicit boundary; never merge automatically.
+10. Extract the verified source archive to a versioned user-owned application
+    directory. For local Docker, preview version, accepted catalog commit,
+    host, `127.0.0.1` and port; then request **Start the local dashboard**.
+    Set `DEVHUB_CATALOG_CONTEXT` to the separate catalog checkout and
+    `DEVHUB_INSTANCE_MODE=private`. Never set the bind address to `0.0.0.0`.
+11. For the selected Linux host, use only the reviewed portable systemd path.
+    Prefer `DEVHUB_RELEASE_TAG` plus its separately verified
+    `DEVHUB_EXPECTED_COMMIT`; never configure a tag and branch together. Keep
+    the catalog external. System-user, root-owned config, service update and
+    restart remain separate explicit host-write approvals. There is no timer.
+12. Verify dashboard health, MCP initialization and `serverInfo`, exact runtime
+    version, one read-only catalog query, catalog revision/fingerprint and an
+    unchanged second preview. A remote URL must be the already reviewed private
+    HTTPS endpoint; another computer's loopback is not a working result.
+13. Run `devhub agent-setup codex` internally and show the recognizable MCP
+    endpoint/auth boundary. Only **Connect this Codex to DevHub** permits the
+    `codex mcp add` write. Never show or request a token value.
+14. Finish with exact tag/version/source identity, deployment/host, catalog
+    base/proposal, selected sources/roots, unresolved items, dashboard URL, MCP
+    endpoint, verification and scoped recovery. Include CLI rollback/uninstall,
+    exact catalog-branch revert, Docker down or prior systemd release restore,
+    and removal of only the DevHub MCP/plugin entries. Preserve the catalog and
+    configuration by default.
+
+The full public operator/evaluator contract is in
+`docs/COMMUNITY_BOOTSTRAP.md`. An optional Sites companion is a later view and
+never replaces this canonical backend.
 
 ## Verify the Connected Setup runtime
 

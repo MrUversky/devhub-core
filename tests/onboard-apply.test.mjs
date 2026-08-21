@@ -105,7 +105,7 @@ hosts:
     platform: process.platform,
     hostname: "reviewed-host.example",
     now,
-    runtimeVersion: "1.0.0-rc.4",
+    runtimeVersion: "1.0.0-rc.5",
     profileDocument,
     connectors,
     planning: quietPlanning(temporary),

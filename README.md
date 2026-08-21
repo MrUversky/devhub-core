@@ -41,6 +41,7 @@ process supervisor. Unknown never pretends to be green.
 ## Start here
 
 - [Install DevHub](#install-devhub)
+- [Set up DevHub with Codex](docs/COMMUNITY_BOOTSTRAP.md)
 - [Set up connections](docs/CONNECTED_SETUP.md)
 - [Create your catalog](#add-your-catalog)
 - [Connect Codex, Claude Code, or Cursor](docs/INTEGRATIONS_AGENTS.md)
@@ -78,6 +79,11 @@ verify `devhub doctor --workflow --json` and `devhub doctor --install --json`.
 The same installer performs explicit upgrades, rollback and config-preserving
 uninstall. The Codex plugin, Claude Code memory and Cursor rule are guidance;
 none of them installs the CLI.
+
+In a blank Codex task, ask **Set up my DevHub from the exact public release**.
+The reviewed [community first-run](docs/COMMUNITY_BOOTSTRAP.md) makes Codex do
+the release verification, installation, bounded onboarding, deployment and MCP
+planning while you answer only recognizable choices and approve each write.
 
 The dashboard/server remains available from a verified source snapshot:
 

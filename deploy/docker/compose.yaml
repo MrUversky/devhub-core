@@ -5,6 +5,11 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile
+      additional_contexts:
+        devhub_catalog: "${DEVHUB_CATALOG_CONTEXT:-../../catalog}"
+      args:
+        DEVHUB_INSTANCE_MODE: "${DEVHUB_INSTANCE_MODE:-demo}"
+        DEVHUB_INSTANCE_LABEL: "${DEVHUB_INSTANCE_LABEL:-Public demo}"
     environment:
       DEVHUB_HOST_ID: "${DEVHUB_HOST_ID:-devhub-server}"
       DEVHUB_MCP_AUTH_MODE: "${DEVHUB_MCP_AUTH_MODE:-network}"

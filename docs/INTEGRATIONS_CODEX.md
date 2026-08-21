@@ -6,6 +6,11 @@ security and workflow boundary; this page documents Codex-specific packaging.
 
 DevHub includes a portable Codex plugin with a registry workflow skill. The public plugin does not contain a server address or token: every installation points it at the owner's own DevHub deployment.
 
+For a blank workspace, start with **Set up my DevHub from the exact public
+release** and follow the reviewed [community first-run](COMMUNITY_BOOTSTRAP.md).
+Codex performs the commands and asks for recognizable deployment, host, root
+and source choices; it does not hand the user JSON or a shell checklist.
+
 ## Add the plugin marketplace
 
 Pin the public repository to one reviewed annotated release tag. Do not install
@@ -21,7 +26,7 @@ Codex home after the exact public tag is published. Pre-publication validation
 of a staged local marketplace remains separate evidence.
 
 For example, after the matching public release is published, `<TAG>` is an
-exact value such as `v1.0.0-rc.4`. From an already downloaded and verified
+exact value such as `v1.0.0-rc.5`. From an already downloaded and verified
 DevHub checkout, the equivalent offline marketplace command is:
 
 ```bash

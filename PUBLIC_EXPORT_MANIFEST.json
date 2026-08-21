@@ -2,7 +2,7 @@
   "manifestVersion": 2,
   "exporterVersion": 1,
   "source": {
-    "commit": "facc67efdcbc9b626f256db8d34473531e4788c6",
+    "commit": "7b3552406df64dc19f660a1ccde20b72b7489561",
     "state": "clean"
   },
   "files": [
@@ -44,7 +44,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "2e7ff7faca86c1afa1b984ef7a3032ca0ebec6c8f1dec954a67050b12978a67f"
+      "sha256": "823d0fb50000eb7e9d7949ea98a3dfc3d09f1c2374042c38da7fb71a7430540f"
     },
     {
       "path": "CODE_OF_CONDUCT.md",
@@ -60,7 +60,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "23f291fd9ef19e3aca804ff136819a27e96e328617ab5e7fbfaa7fc14b417755"
+      "sha256": "cccb8ca405f5ddbaab8d371e5990214656010d9c36c55cc365d17fe2bc36d65c"
     },
     {
       "path": "SECURITY.md",
@@ -164,7 +164,7 @@
     },
     {
       "path": "config/release-intent.json",
-      "sha256": "7de315c49fc8e5d50c059b63785dc20ac860ede9d03e528c43a7d8e7f1eedc89"
+      "sha256": "ed0a2d1bedef007b9a3c7d31939c5b51e49bbf19037d36da62daf1f0ce724068"
     },
     {
       "path": "config/user-runtime-files.txt",
@@ -172,11 +172,11 @@
     },
     {
       "path": "deploy/docker/Dockerfile",
-      "sha256": "90b31e8b363c6b1b04b2388543c20b5c48267ad07fb810fb5370e50da35e6a3c"
+      "sha256": "54b7d5fafaf687991f3ba7a1ac7d0e21bbf69a60a8493603c91fad54b7d3729c"
     },
     {
       "path": "deploy/docker/compose.yaml",
-      "sha256": "3f8c5673186de5f10d9e7543e39eba6548789a017b09fe7d0f6f7514d040648c"
+      "sha256": "80006b21b65817f08d12e128ac674e34e9b4365fb4ee97d1d20e987bf3e71fe9"
     },
     {
       "path": "deploy/docker/healthcheck.mjs",
@@ -188,11 +188,11 @@
     },
     {
       "path": "deploy/systemd/devhub-portable-update",
-      "sha256": "5e41c305603eb7c44a34c94fd31d439e7254dcb5490d5e750318773beecd5ec2"
+      "sha256": "be7e2b1c66323433a9ce4a5d799bca06e774f50d9844db4d98886dacfec6d3a1"
     },
     {
       "path": "deploy/systemd/devhub-portable.env.example",
-      "sha256": "454056a0e2608918ee3176e464a6458b34cdd829662cbdde709bd45c36b1dc4a"
+      "sha256": "ef3b8bc311cd53f4ec4521c4d6d65eb6254eede0c10bf3273385f8fb26e0849d"
     },
     {
       "path": "deploy/systemd/devhub-portable.service.example",
@@ -201,6 +201,10 @@
     {
       "path": "docs/APP_PASSPORT.md",
       "sha256": "ccac3aa597d33ec8cbf241164318d4d114b8ac93afa12793ff3a1ea6b2a28347"
+    },
+    {
+      "path": "docs/COMMUNITY_BOOTSTRAP.md",
+      "sha256": "3002833aa631c9a90aa2cb2f25aea8bb3f25c826724ab785238a7bdf36303d50"
     },
     {
       "path": "docs/CONFIGURATION.md",
@@ -240,7 +244,7 @@
     },
     {
       "path": "docs/INSTALLATION.md",
-      "sha256": "0388aa82eb154932d6eede4c1cd26e42c145671ceda6915c0ec9e7bc0652bc68"
+      "sha256": "bff55d1b9e4959e23f9619582d39ca183f75e59f81df2dbd12d4502665b4440c"
     },
     {
       "path": "docs/INTEGRATIONS_AGENTS.md",
@@ -248,7 +252,7 @@
     },
     {
       "path": "docs/INTEGRATIONS_CODEX.md",
-      "sha256": "91f47744ef064d129bb0287c1bea955f0e005edbb617554980e18aeab5aad2bb"
+      "sha256": "c17bf23f5c47dc4751a47ee941a9339e79724b89f8110e7e2383590a5f1f4cdf"
     },
     {
       "path": "docs/INVENTORY_ADAPTERS.md",
@@ -772,11 +776,11 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "936695a2126add50d61529ae1ff08b8510f2f9e63bf65e9a5cf33dec56c1c520"
+      "sha256": "300c6b741cca93d6de76a5329d154a80dcfa6d4b720825ad60390681a8e3f0ec"
     },
     {
       "path": "package.json",
-      "sha256": "237a6d17e4390683d867a63ba8f6069fe2fc3f298a668bc797e6dd6c14c549e0"
+      "sha256": "e98c296a0fa1c77649d40ba2043c025b8479b889d301360d1d19717753c05bfe"
     },
     {
       "path": "plugins/devhub/.codex-plugin/plugin.json",
@@ -784,7 +788,7 @@
     },
     {
       "path": "plugins/devhub/skills/devhub-registry/SKILL.md",
-      "sha256": "3994597b024a0a4677bb0ec16a33258a5c79e32e5158fac34b1fb50746e0fbfd"
+      "sha256": "62579610517d996f979a4c32519e31daa68867082f54bbb7b98d58892bdd7741"
     },
     {
       "path": "plugins/devhub/skills/devhub-registry/agents/openai.yaml",
@@ -980,7 +984,7 @@
     },
     {
       "path": "tests/agent-setup.test.mjs",
-      "sha256": "09dab46d311b9a3c802b36ca9fb0699884689f73d83e323159c04aa463643163"
+      "sha256": "83f9ad752a4b8a12c3ae4b541ebab060fc0bc7063892b4ac81cc305cb7dee4c7"
     },
     {
       "path": "tests/catalog-init.test.mjs",
@@ -1204,7 +1208,7 @@
     },
     {
       "path": "tests/onboard-apply.test.mjs",
-      "sha256": "dbca8e8584fd1142e4b0f80ca9df023e531a61145953d5efd41133504eb2f0f7"
+      "sha256": "b141fae03a99fbc1f7708d3033c763b80899ca93a351394126171b8e0889c688"
     },
     {
       "path": "tests/onboard.test.mjs",
