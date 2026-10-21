@@ -27,7 +27,7 @@
     "artifact:verify": "node scripts/verify-public-manifest.mjs ."
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/sdk": "^1.32.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "yaml": "^2.9.0",
